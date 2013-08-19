@@ -3,3 +3,4 @@ syntax: glob
 
 .idea
 *.pyc
+*.DS_Store
