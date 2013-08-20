@@ -1,45 +1,87 @@
+from collections import OrderedDict
 from flask import Flask
-from xp import Xp
+from experiment import Experiment
 import json
 import os
 
-
-dir = os.path.dirname(__file__)
 app = Flask(__name__)
-xp = Xp(os.path.join(dir, "nomodexp.xml"), os.path.join(dir, "logs"))
+exp_data_path = os.path.join(os.path.dirname(__file__), "exp_data")
+
+experiments = {}
+
+for exp_file in os.listdir(exp_data_path):
+    if exp_file.endswith(".xml"):
+        exp = Experiment(os.path.join(exp_data_path, exp_file),
+                         os.path.splitext(exp_file)[0])
+        experiments[exp.id] = exp
 
 
-@app.route('/available_runs')
-def available_runs():
-    unstarted_runs = [run.id for run in xp.iter_runs() if not run.started()]
+@app.route('/<exp_id>/available_runs')
+def available_runs(exp_id):
+    exp = experiments[exp_id]
+    unstarted_runs = [run.id for run in exp.iter_runs() if not run.started()]
     return json.dumps(unstarted_runs)
 
 
-@app.route('/uncompleted_runs')
-def uncompleted_runs():
-    uncompleted_runs = [run.id for run in xp.iter_runs() if run.started() and not run.completed()]
+@app.route('/<exp_id>/uncompleted_runs')
+def uncompleted_runs(exp_id):
+    exp = experiments[exp_id]
+    uncompleted_runs = [run.id for run in exp.iter_runs() if run.started() and not run.completed()]
     return json.dumps(uncompleted_runs)
 
 
-@app.route('/xp_id')
-def xp_id():
-    return xp.id
+@app.route('/<exp_id>/runs')
+def exp_runs(exp_id):
+    exp = experiments[exp_id]
+    status = OrderedDict((run.id, run.status()) for run in exp.iter_runs())
+    return json.dumps(status)
 
 
-@app.route('/<run_id>/current_trial')
-def current_trial(run_id):
-    trial = xp.get_run(run_id).current_trial()
-    values = trial.values()
-    values.update({
-        "trial_num": trial.num,
-        "block_num": trial.block.num,
-        "run_id": trial.run.id,
-        "xp_id": trial.xp.id,
-        "trial_count": len(trial.block),
-        "block_count": trial.run.block_count()
-    })
-    return json.dumps(values)
+@app.route('/experiments')
+def experiments_props():
+    return json.dumps(experiments.keys())
+
+
+@app.route('/<exp_id>')
+def experiment_props(exp_id):
+    exp = experiments[exp_id]
+    return json.dumps(exp.properties())
+
+
+@app.route('/<exp_id>/<run_id>')
+def run_status(exp_id, run_id):
+    exp = experiments[exp_id]
+    run = exp.get_run(run_id)
+    return json.dumps(run.properties())
+
+
+@app.route('/<exp_id>/<run_id>/current_trial')
+def current_trial(exp_id, run_id):
+    exp = experiments[exp_id]
+    trial = exp.get_run(run_id).current_trial()
+    return json.dumps(trial.properties())
+
+
+@app.route('/<exp_id>/<run_id>/current_block')
+def current_block(exp_id, run_id):
+    exp = experiments[exp_id]
+    block = exp.get_run(run_id).current_trial().block
+    return json.dumps(block.properties())
+
+
+@app.route('/<exp_id>/<run_id>/<int:block_num>')
+def block_props(exp_id, run_id, block_num):
+    exp = experiments[exp_id]
+    block = exp.get_run(run_id).get_block(block_num)
+    return json.dumps(block.properties())
+
+
+@app.route('/<exp_id>/<run_id>/<int:block_num>/<int:trial_num>')
+def trial_props(exp_id, run_id, block_num, trial_num):
+    exp = experiments[exp_id]
+    trial = exp.get_run(run_id).get_block(block_num).get_trial(trial_num)
+    return json.dumps(trial.properties())
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
