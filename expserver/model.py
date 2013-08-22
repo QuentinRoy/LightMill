@@ -42,7 +42,8 @@ class Run(db.Model):
     experiment = db.relationship(Experiment,
                                  backref=db.backref('runs',
                                                     lazy='dynamic',
-                                                    cascade="all, delete-orphan"),
+                                                    cascade='all, delete-orphan',
+                                                    order_by=id),
                                  lazy='joined')
 
     __table_args__ = (
@@ -71,6 +72,13 @@ def _free_number(number_list):
     return i
 
 
+block_values = db.Table(
+    'block_values',
+    db.Column('block_db_id', db.Integer, db.ForeignKey('block._db_id')),
+    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id'))
+)
+
+
 class Block(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
@@ -79,20 +87,27 @@ class Block(db.Model):
     run = db.relationship(Run,
                           backref=db.backref('blocks',
                                              lazy='dynamic',
-                                             cascade="all, delete-orphan"),
+                                             cascade="all, delete-orphan",
+                                             order_by='Block.number'),
                           lazy='joined')
 
     number = db.Column(db.Integer, nullable=False)
     practice = db.Column(db.Boolean)
+    values = db.relationship('FactorValue', secondary=block_values)
 
     __table_args__ = (
         db.UniqueConstraint("_run_db_id", "number"),
     )
 
-    def __init__(self, run, number=None, practice=False):
+    @property
+    def experiment(self):
+        return self.run.experiment if self.run is not None else None
+
+    def __init__(self, run, values, number=None, practice=False):
         self.practice = practice
         self.number = number if number is not None else _free_number(block.number for block in run.blocks)
         self.run = run
+        self.values = values
 
     def __repr__(self):
         return '<{} {} (run id: {}, experiment id: {})>' \
@@ -100,6 +115,21 @@ class Block(db.Model):
                     self.number,
                     self.run.id if self.run is not None else None,
                     self.run.experiment.id if self.run is not None and self.run.experiment is not None else None)
+
+    def measured_block_number(self):
+        i = 0
+        for block in self.run.blocks.order_by(Block.number):
+            if block is self:
+                return i
+            elif not block.practice:
+                i += 1
+
+
+trial_values = db.Table(
+    'trial_values',
+    db.Column('trial_db_id', db.Integer, db.ForeignKey('trial._db_id')),
+    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id'))
+)
 
 
 class Trial(db.Model):
@@ -110,9 +140,11 @@ class Trial(db.Model):
     block = db.relationship(Block,
                             backref=db.backref('trials',
                                                lazy='dynamic',
-                                               cascade="all, delete-orphan"),
+                                               cascade="all, delete-orphan",
+                                               order_by='Trial.number'),
                             lazy='joined')
 
+    values = db.relationship('FactorValue', secondary=trial_values)
     number = db.Column(db.Integer, nullable=False)
     completed = db.Column(db.Boolean, default=False)
 
@@ -120,9 +152,24 @@ class Trial(db.Model):
         db.UniqueConstraint("number", "_block_db_id"),
     )
 
-    def __init__(self, block, number=None):
+    @property
+    def experiment(self):
+        return self.block.run.experiment if self.block is not None else None
+
+    @property
+    def run(self):
+        return self.block.run if self.block is not None else None
+
+    def iter_all_values(self):
+        for value in self.values:
+            yield value
+        for value in self.block.values:
+            yield value
+
+    def __init__(self, block, values, number=None):
         self.number = number if number is not None else _free_number(trial.number for trial in block.trials)
         self.block = block
+        self.values = values
 
     def __repr__(self):
         return '<{} {} (block number: {}, run id: {}, experiment id: {}, completed: {})>' \
@@ -224,6 +271,10 @@ if __name__ == '__main__':
                          type=random.choice(('Integer', 'String')),
                          name='Test Factor number {}'.format(f_num))
 
+    def random_values(experiment, number):
+        factors = random.sample(experiment.factors.all(), number)
+        return [random.choice(factor.values) for factor in factors]
+
     def create_objs():
 
         for exp_num in range(2):
@@ -240,10 +291,12 @@ if __name__ == '__main__':
 
             for run_num in range(3):
                 run = Run('S' + str(run_num), exp)
-                for _ in range(3):
-                    block = Block(run)
+                for block_num in range(9):
+                    block = Block(run,
+                                  practice=block_num % 3 == 0,
+                                  values=random_values(exp, 2))
                     for _ in range(10):
-                        Trial(block)
+                        Trial(block, values=random_values(exp, 2))
             db.session.add(exp)
         db.session.commit()
 
@@ -259,7 +312,8 @@ if __name__ == '__main__':
                     for trial in block.trials:
                         print('  ' + repr(trial))
 
-            print('get factor f1: ' + repr(exp.get_factor('f1')))
+            print('Get factor f1: ' + repr(exp.get_factor('f1')))
+            print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measured_block_number()))
 
 
     if os.path.exists(db_uri):

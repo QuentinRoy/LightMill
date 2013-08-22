@@ -6,7 +6,7 @@ from model import Experiment, Run, Trial, Factor, FactorValue, Block
 
 def create_experiment(touchstone_file, session):
     exp_dom = ElementTree.parse(touchstone_file).getroot()
-    expe = _parse_experiment(exp_dom)
+    expe = _parse_experiment(exp_dom, session)
     session.add(expe)
 
 
@@ -50,9 +50,24 @@ def _parse_run(dom, experiment):
     return run
 
 
+def _parse_factor_values_string(values_string, experiment):
+    value_strings = values_string.split(',')
+    value_seq = (value_string.split('=', 1) for value_string in value_strings if value_string != "")
+    values = []
+    for factor_id, value_id in value_seq:
+        # we cannot use a query so we have to filter by hand
+        factor = next(factor for factor in experiment.factors if factor.id == factor_id)
+        value = next(value for value in factor.values if value.id == value_id)
+        values.append(value)
+    return values
+
+
 def _parse_block(dom, run):
+    practice = dom.tag == 'practice'
+    values = _parse_factor_values_string(dom.get('values'), run.experiment)
     block = Block(run=run,
-                  practice=dom.tag == 'practice')
+                  practice=practice,
+                  values=values)
 
     for trial_dom in dom.findall('trial'):
         _parse_trial(trial_dom, block)
@@ -61,8 +76,10 @@ def _parse_block(dom, run):
 
 def _parse_trial(dom, block):
     num = dom.get('number')
+    values = _parse_factor_values_string(dom.get('values'), block.experiment)
     trial = Trial(block,
-                 number=int(num) if num is not None else None)
+                  number=int(num) if num is not None else None,
+                  values=values)
     return trial
 
 
