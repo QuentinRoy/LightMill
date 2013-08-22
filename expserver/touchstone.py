@@ -6,7 +6,7 @@ from model import Experiment, Run, Trial, Factor, FactorValue, Block
 
 def create_experiment(touchstone_file, session):
     exp_dom = ElementTree.parse(touchstone_file).getroot()
-    expe = _parse_experiment(exp_dom, session)
+    expe = _parse_experiment(exp_dom)
     session.add(expe)
 
 
