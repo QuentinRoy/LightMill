@@ -1,13 +1,20 @@
 __author__ = 'Quentin Roy'
 
 from xml.etree import ElementTree
-from model import Experiment, Run, Trial, Factor, FactorValue, Block
+from xml.dom import minidom
+from model import Experiment, Run, Trial, Factor, FactorValue, Block, db
 
 
-def create_experiment(touchstone_file, session):
+def create_experiment(touchstone_file):
     exp_dom = ElementTree.parse(touchstone_file).getroot()
-    expe = _parse_experiment(exp_dom)
-    session.add(expe)
+    return _parse_experiment(exp_dom)
+
+
+def parse_experiment_id(touchstone_file):
+    xmldoc = minidom.parse(touchstone_file)
+    expelt = xmldoc.getElementsByTagName('experiment')[0]
+    expid = expelt.attributes['id'].value
+    return expid
 
 
 def _nonizeString(string):
@@ -84,12 +91,12 @@ def _parse_trial(dom, block):
 
 
 if __name__ == '__main__':
-    from app import app
+    from app import create_app
     from model import db
     import os
 
     db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../parse_test.db'))
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + db_uri
+    app = create_app('sqlite:////' + db_uri)
 
     touchstone_file = os.path.abspath(os.path.join(os.path.dirname(__name__), '../experiment.xml'))
 

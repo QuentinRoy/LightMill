@@ -1,14 +1,13 @@
 __author__ = 'Quentin Roy'
 
 from flask.ext.sqlalchemy import SQLAlchemy
-from app import app
 
-db = SQLAlchemy(app)
+db = SQLAlchemy()
 
 
 class Experiment(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id = db.Column(db.String(80), unique=True)
+    id = db.Column(db.String(80), unique=True, index=True)
     name = db.Column(db.String(200))
     author = db.Column(db.String(200), nullable=True)
     description = db.Column(db.Text, nullable=True)
@@ -37,7 +36,7 @@ class Run(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
 
-    id = db.Column(db.String(10))
+    id = db.Column(db.String(10), index=True)
 
     experiment = db.relationship(Experiment,
                                  backref=db.backref('runs',
@@ -255,10 +254,7 @@ class FactorValue(db.Model):
 if __name__ == '__main__':
     import os
     import random
-
-    db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + db_uri
-
+    from flask import Flask
 
     def gen_factor_values():
         return (FactorValue('v{}'.format(v_num), 'Test value number {}'.format(v_num)) for v_num in range(3))
@@ -315,12 +311,17 @@ if __name__ == '__main__':
             print('Get factor f1: ' + repr(exp.get_factor('f1')))
             print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measured_block_number()))
 
+    db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))
+    app = Flask(os.path.splitext(__name__)[0])
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + db_uri
+    db.init_app(app)
 
-    if os.path.exists(db_uri):
-        db.drop_all()
+    with app.test_request_context():
+        if os.path.exists(db_uri):
+            db.drop_all()
 
-    db.create_all()
-    create_objs()
-    read()
+        db.create_all()
+        create_objs()
+        read()
 
     # os.remove(db_uri)
