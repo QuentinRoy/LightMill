@@ -15,4 +15,4 @@ To make it run, you just have to do something like::
     $ source venv/bin/activate
     $ pip install -r expserver/requirements.txt
     $ cd expserver
-    $ python app.py
+    $ python run.py
