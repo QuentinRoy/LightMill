@@ -101,6 +101,19 @@ def expe_props(experiment):
     return jsonify(exp_data)
 
 
+@exp_api.route('/experiment/<experiment>/factors')
+def factors(experiment):
+    factors = {}
+    for factor in experiment.factors:
+        factors[factor.id] = {
+            'tag': factor.tag,
+            'name': factor.name,
+            'type': factor.type,
+            'values': dict((value.id, value.name) for value in factor.values)
+        }
+    return jsonify(factors)
+
+
 @exp_api.route('/experiment/<experiment>/status')
 def expe_runs(experiment):
     start = time()
