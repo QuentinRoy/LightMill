@@ -3,10 +3,157 @@ from flask.blueprints import Blueprint
 __author__ = 'Quentin Roy'
 
 import os
-import json
-from model import Experiment
+from flask import jsonify, g
+from model import Experiment, Run, Trial, Block
+from time import time
 
 exp_api = Blueprint('expe_api', os.path.splitext(__name__)[0])
+
+
+class UnknownElement(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
+@exp_api.errorhandler(UnknownElement)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
+
+
+def _pull_trial(values):
+    try:
+        trial = Trial.query.get_by_number(values['trial'], values['block'], values['run'], values['experiment'])
+        values['trial'] = trial
+        values['experiment'] = trial.experiment
+        values['block'] = trial.block
+        values['run'] = trial.run
+    except:
+        raise UnknownElement("The trial does not exist.")
+
+
+def _pull_block(values):
+    try:
+        block = Block.query.get_by_number(values['block'], values['run'], values['experiment'])
+        values['experiment'] = block.experiment
+        values['block'] = block
+        values['run'] = block.run
+    except:
+        raise UnknownElement("The trial does not exist.")
+
+
+def _pull_run(values):
+    try:
+        run = Run.query.get_by_id(values['run'], values['experiment'])
+        values['run'] = run
+        values['experiment'] = run.experiment
+    except:
+        raise UnknownElement("Either experiment " + values['experiment'] + " or run " + values['run'] +
+                             " does not exist.")
+
+
+def _pull_experiment(values):
+    try:
+        values['experiment'] = Experiment.query.get_by_id(values['experiment'])
+    except:
+        raise UnknownElement("Experiment " + values['experiment'] + " does not exist.")
+
+
+@exp_api.url_value_preprocessor
+def pull_objects(endpoint, values):
+    """When a request contains a run_id value, or experiment_id value
+     transform it directly into a project by checking the credentials
+     are stored in session.
+     If the project or the experiment does not exists, it raises an exception
+    """
+    if not values:
+        return
+
+    if 'experiment' in values:
+        if not 'run' in values:
+            _pull_experiment(values)
+        elif not 'block' in values:
+            _pull_run(values)
+        elif not 'trial' in values:
+            _pull_block(values)
+        else:
+            _pull_trial(values)
+
+
+@exp_api.route('/experiments')
+def experiments_list():
+    experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
+    return jsonify(experiments)
+
+
+@exp_api.route('/experiment/<experiment>')
+def expe_props(experiment):
+    start = time()
+    exp_data = {
+        'id': experiment.id,
+        'name': experiment.name,
+        'runs': [run.id for run in experiment.runs],
+        'req_duration': time() - start
+    }
+    return jsonify(exp_data)
+
+@exp_api.route('/experiment/<experiment>/status')
+def expe_runs(experiment):
+    start = time()
+    runs_props = {}
+    for run in experiment.runs:
+        runs_props[run.id] = {
+            'completed': run.completed(),
+            'started': run.started()
+        }
+    runs_props['req_duration'] = time() - start
+    return jsonify(runs_props)
+
+
+@exp_api.route('/run/<experiment>/<run>')
+def run_props(experiment, run):
+    start = time()
+    return jsonify({
+        'run_id': run.id,
+        'experiment_id': run.experiment.id,
+        'completed': run.completed(),
+        'started': run.started(),
+        'req_duration': time() - start
+    })
+
+@exp_api.route('/run/<experiment>/<run>/current_trial')
+def run_current_trial(experiment, run):
+    trial = run.current_trial()
+    return jsonify({
+        'num': trial.number,
+        'block_num': trial.block.number,
+        'experiment_id': experiment.id,
+        'run_id': run.id,
+        'values': dict((value.factor.id, value.id) for value in trial.iter_all_values())
+    })
+
+
+@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>')
+def trial_values(experiment, run, block, trial):
+    return jsonify({
+        'num': trial.number,
+        'block_num': block.number,
+        'experiment_id': experiment.id,
+        'run_id': run.id,
+        'values': dict((value.factor.id, value.id) for value in trial.iter_all_values())
+    })
 
 
 #
@@ -29,12 +176,6 @@ exp_api = Blueprint('expe_api', os.path.splitext(__name__)[0])
 #     exp = experiments[exp_id]
 #     status = OrderedDict((run.id, run.status()) for run in exp.iter_runs())
 #     return json.dumps(status)
-#
-#
-@exp_api.route('/experiments')
-def experiments_list():
-    experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
-    return json.dumps(experiments)
 #
 #
 # @app.route('/<exp_id>')
