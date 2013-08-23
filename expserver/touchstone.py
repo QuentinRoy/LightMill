@@ -1,7 +1,8 @@
 __author__ = 'Quentin Roy'
 
 from xml.etree import ElementTree
-from xml.dom import minidom
+from xml.dom import pulldom
+import default_settings
 from model import Experiment, Run, Trial, Factor, FactorValue, Block, db
 
 
@@ -11,10 +12,10 @@ def create_experiment(touchstone_file):
 
 
 def parse_experiment_id(touchstone_file):
-    xmldoc = minidom.parse(touchstone_file)
-    expelt = xmldoc.getElementsByTagName('experiment')[0]
-    expid = expelt.attributes['id'].value
-    return expid
+    doc = pulldom.parse(touchstone_file)
+    for event, node in doc:
+        if event == pulldom.START_ELEMENT and node.tagName == 'experiment':
+            return node.getAttribute('id')
 
 
 def _nonizeString(string):
@@ -91,7 +92,7 @@ def _parse_trial(dom, block):
 
 
 if __name__ == '__main__':
-    from app import create_app
+    from run import create_app
     from model import db
     import os
 
