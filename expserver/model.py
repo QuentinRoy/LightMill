@@ -1,11 +1,17 @@
 __author__ = 'Quentin Roy'
 
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
 
 db = SQLAlchemy()
 
 
 class Experiment(db.Model):
+    class ExperimentQuery(BaseQuery):
+        def get_by_id(self, experiment_id):
+            return Experiment.query.filter(Experiment.id == experiment_id).one()
+
+    query_class = ExperimentQuery
+
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id = db.Column(db.String(80), unique=True, index=True)
     name = db.Column(db.String(200))
@@ -31,8 +37,18 @@ class Experiment(db.Model):
     def get_factor(self, factor_id):
         return self.factors.filter_by(id=factor_id).one()
 
+    def get_run(self, run_id):
+        return self.runs.filter_by(id=run_id).one()
+
 
 class Run(db.Model):
+    class RunQuery(BaseQuery):
+        def get_by_id(self, run_id, experiment_id):
+            return Run.query.filter(Run.id == run_id) \
+                .filter(Experiment.id == experiment_id).one()
+
+    query_class = RunQuery
+
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
 
@@ -41,8 +57,7 @@ class Run(db.Model):
     experiment = db.relationship(Experiment,
                                  backref=db.backref('runs',
                                                     lazy='dynamic',
-                                                    cascade='all, delete-orphan',
-                                                    order_by=id),
+                                                    cascade='all, delete-orphan'),
                                  lazy='joined')
 
     __table_args__ = (
@@ -54,11 +69,31 @@ class Run(db.Model):
         self.id = id
         self.experiment = experiment
 
+    @property
+    def trials(self):
+        return Trial.query.options(db.joinedload(Trial.block)) \
+                    .join(Block, Run).order_by(Block.number, Trial.number)\
+                    .filter(Block.run == self)
+
+    def current_trial(self):
+        return self.trials.filter(Trial.completed == False).first()
+
     def __repr__(self):
         return '<{} {} (experiment id: {})>' \
             .format(self.__class__.__name__,
                     self.id,
                     self.experiment.id if self.experiment else None)
+
+    def completed(self):
+        exist_query = self.trials.filter(Trial.completed == False).exists()
+        session_query = db.session.query(exist_query)
+        completed = not session_query.scalar()
+        return completed
+
+    def started(self):
+        exist_query = self.trials.filter(Trial.completed == True).exists()
+        started = db.session.query(exist_query).scalar()
+        return started
 
 
 def _free_number(number_list):
@@ -81,7 +116,7 @@ block_values = db.Table(
 class Block(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    _run_db_id = db.Column(db.Integer, db.ForeignKey(Run._db_id), nullable=False)
+    _run_db_id = db.Column(db.Integer, db.ForeignKey(Run._db_id), nullable=False, index=True)
 
     run = db.relationship(Run,
                           backref=db.backref('blocks',
@@ -132,9 +167,20 @@ trial_values = db.Table(
 
 
 class Trial(db.Model):
+    class TrialQuery(BaseQuery):
+        def get_by_number(self, trial_number, block_number, run_id, experiment_id):
+            return Trial.query \
+                .join(Block, Run, Experiment) \
+                .filter(Trial.number == trial_number,
+                        Block.number == block_number,
+                        Experiment.id == experiment_id,
+                        Run.id == run_id).one()
+
+    query_class = TrialQuery
+
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    _block_db_id = db.Column(db.Integer, db.ForeignKey(Block._db_id), nullable=False)
+    _block_db_id = db.Column(db.Integer, db.ForeignKey(Block._db_id), nullable=False, index=True)
 
     block = db.relationship(Block,
                             backref=db.backref('trials',
@@ -145,7 +191,7 @@ class Trial(db.Model):
 
     values = db.relationship('FactorValue', secondary=trial_values)
     number = db.Column(db.Integer, nullable=False)
-    completed = db.Column(db.Boolean, default=False)
+    completed = db.Column(db.Boolean, default=False, index=True)
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
@@ -256,6 +302,8 @@ if __name__ == '__main__':
     import random
     from flask import Flask
 
+    print('Model Debug')
+
     def gen_factor_values():
         return (FactorValue('v{}'.format(v_num), 'Test value number {}'.format(v_num)) for v_num in range(3))
 
@@ -324,4 +372,4 @@ if __name__ == '__main__':
         create_objs()
         read()
 
-    # os.remove(db_uri)
+        # os.remove(db_uri)
