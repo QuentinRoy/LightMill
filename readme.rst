@@ -17,4 +17,5 @@ To make it run, you just have to do something like::
     $ cd expserver
     $ python run.py
 
-The file `experiment.xml`:code: at the root folder will be automatically imported into the database.
+The experiment described in `experiment.xml`:code: at the root folder will be automatically imported into the database
+at server startup.
