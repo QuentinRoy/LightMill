@@ -190,5 +190,6 @@ def trial_info(trial):
         'practice': trial.block.practice,
         'measure_block_number': trial.block.measure_block_number(),
         'values': dict((value.factor.id, value.id) for value in trial.iter_all_values()),
-        'total': trial.block.length()
+        'total': trial.block.length(),
+        'completion_date': trial.completion_date
     }
