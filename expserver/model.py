@@ -97,6 +97,13 @@ class Run(db.Model):
         started = db.session.query(exist_query).scalar()
         return started
 
+    def trial_count(self):
+        return self.trials.count()
+
+    def block_count(self):
+        return self.blocks.count()
+
+
 
 def _free_number(number_list):
     numbers = sorted(number_list)
@@ -152,13 +159,14 @@ class Block(db.Model):
                     self.run.id if self.run is not None else None,
                     self.run.experiment.id if self.run is not None and self.run.experiment is not None else None)
 
-    def measured_block_number(self):
-        i = 0
-        for block in self.run.blocks.order_by(Block.number):
-            if block is self:
-                return i
-            elif not block.practice:
-                i += 1
+    def measure_block_number(self):
+        if not self.practice:
+            i = 0
+            for block in self.run.blocks.order_by(Block.number):
+                if block is self:
+                    return i
+                elif not block.practice:
+                    i += 1
 
     def length(self):
         return self.trials.count()
@@ -371,7 +379,7 @@ if __name__ == '__main__':
                         print('  ' + repr(trial))
 
             print('Get factor f1: ' + repr(exp.get_factor('f1')))
-            print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measured_block_number()))
+            print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measure_block_number()))
 
     db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))
     app = Flask(os.path.splitext(__name__)[0])

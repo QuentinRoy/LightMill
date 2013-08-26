@@ -157,6 +157,8 @@ def run_props(experiment, run):
         'experiment_id': run.experiment.id,
         'completed': run.completed(),
         'started': run.started(),
+        'trial_count': run.trial_count(),
+        'block_count': run.block_count(),
         'req_duration': time() - start
     })
 
@@ -175,16 +177,18 @@ def run_current_trial(experiment, run):
 
 
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>')
-def trial_values(experiemnt, run, block, trial):
+def trial_values(experiment, run, block, trial):
     return jsonify(trial_info(trial))
 
 
 def trial_info(trial):
     return {
-        'num': trial.number,
-        'block_num': trial.block.number,
+        'number': trial.number,
+        'block_number': trial.block.number,
         'experiment_id': trial.experiment.id,
         'run_id': trial.run.id,
+        'practice': trial.block.practice,
+        'measure_block_number': trial.block.measure_block_number(),
         'values': dict((value.factor.id, value.id) for value in trial.iter_all_values()),
         'total': trial.block.length()
     }
