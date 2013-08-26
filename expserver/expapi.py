@@ -165,13 +165,7 @@ def run_props(experiment, run):
 def run_current_trial(experiment, run):
     trial = run.current_trial()
     if trial:
-        return jsonify({
-            'num': trial.number,
-            'block_num': trial.block.number,
-            'experiment_id': experiment.id,
-            'run_id': run.id,
-            'values': dict((value.factor.id, value.id) for value in trial.iter_all_values())
-        })
+        return jsonify(trial_info(trial))
     else:
         response = jsonify({
             'message': 'The run is completed.'
@@ -181,11 +175,16 @@ def run_current_trial(experiment, run):
 
 
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>')
-def trial_values(experiment, run, block, trial):
-    return jsonify({
+def trial_values(experiemnt, run, block, trial):
+    return jsonify(trial_info(trial))
+
+
+def trial_info(trial):
+    return {
         'num': trial.number,
-        'block_num': block.number,
-        'experiment_id': experiment.id,
-        'run_id': run.id,
-        'values': dict((value.factor.id, value.id) for value in trial.iter_all_values())
-    })
+        'block_num': trial.block.number,
+        'experiment_id': trial.experiment.id,
+        'run_id': trial.run.id,
+        'values': dict((value.factor.id, value.id) for value in trial.iter_all_values()),
+        'total': trial.block.length()
+    }

@@ -160,6 +160,9 @@ class Block(db.Model):
             elif not block.practice:
                 i += 1
 
+    def length(self):
+        return self.trials.count()
+
 
 trial_values = db.Table(
     'trial_values',
