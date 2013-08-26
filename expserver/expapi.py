@@ -8,7 +8,6 @@ import os
 from flask import jsonify, redirect
 from model import Experiment, Run, Trial, Block
 from time import time
-from crossdomain import crossdomain
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
 
