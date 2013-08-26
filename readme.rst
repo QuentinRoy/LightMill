@@ -16,3 +16,5 @@ To make it run, you just have to do something like::
     $ pip install -r expserver/requirements.txt
     $ cd expserver
     $ python run.py
+
+The file `experiment.xml`:file: at the root folder will be automatically set and imported into the database.
