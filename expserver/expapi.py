@@ -97,6 +97,12 @@ def experiments_list():
     return jsonify(experiments)
 
 
+@exp_api.route('/')
+def index():
+    url = url_for('exp_api.experiments_list')
+    return redirect(url)
+
+
 @exp_api.route('/experiment/<experiment>')
 def expe_props(experiment):
     start = time()
