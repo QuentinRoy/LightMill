@@ -84,6 +84,13 @@ def pull_objects(endpoint, values):
         raise UnknownElement("Target not found.", payload={'request': values})
 
 
+@exp_api.after_request
+def after_request(response):
+    """Makes all the api accessible from any origin"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+
 @exp_api.route('/experiments')
 def experiments_list():
     experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
