@@ -143,7 +143,7 @@ def expe_runs(experiment):
 
 @exp_api.route('/experiment/<experiment>/next_run')
 def get_free_run(experiment):
-    started_runs = experiment.runs.join(Block, Trial).filter(Trial.completed == True).all()
+    started_runs = experiment.runs.join(Block, Trial).filter(Trial.completion_date != None).all()
     for run in experiment.runs:
         if run not in started_runs:
             return run.id

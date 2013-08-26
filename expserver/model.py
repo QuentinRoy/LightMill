@@ -1,8 +1,10 @@
 __author__ = 'Quentin Roy'
 
 from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
+from datetime import datetime
 
 db = SQLAlchemy()
+
 
 
 class Experiment(db.Model):
@@ -72,11 +74,11 @@ class Run(db.Model):
     @property
     def trials(self):
         return Trial.query.options(db.joinedload(Trial.block)) \
-                    .join(Block, Run).order_by(Block.number, Trial.number)\
-                    .filter(Block.run == self)
+            .join(Block, Run).order_by(Block.number, Trial.number) \
+            .filter(Block.run == self)
 
     def current_trial(self):
-        return self.trials.filter(Trial.completed == False).first()
+        return self.trials.filter(Trial.completion_date == None).first()
 
     def __repr__(self):
         return '<{} {} (experiment id: {})>' \
@@ -85,13 +87,13 @@ class Run(db.Model):
                     self.experiment.id if self.experiment else None)
 
     def completed(self):
-        exist_query = self.trials.filter(Trial.completed == False).exists()
+        exist_query = self.trials.filter(Trial.completion_date == None).exists()
         session_query = db.session.query(exist_query)
         completed = not session_query.scalar()
         return completed
 
     def started(self):
-        exist_query = self.trials.filter(Trial.completed == True).exists()
+        exist_query = self.trials.filter(Trial.completion_date != None).exists()
         started = db.session.query(exist_query).scalar()
         return started
 
@@ -191,15 +193,24 @@ class Trial(db.Model):
 
     values = db.relationship('FactorValue', secondary=trial_values)
     number = db.Column(db.Integer, nullable=False)
-    completed = db.Column(db.Boolean, default=False, index=True)
+    completion_date = db.Column(db.DateTime, index=True)
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
     )
 
     @property
+    def completed(self):
+        return self.completion_date is not None
+
+    @completed.setter
+    def completed(self, value):
+        self.completion_date = datetime.today() if value else None
+
+    @property
     def experiment(self):
-        return self.block.run.experiment if self.block is not None else None
+        run = self.run
+        return run.experiment if run is not None else None
 
     @property
     def run(self):
@@ -217,7 +228,7 @@ class Trial(db.Model):
         self.values = values
 
     def __repr__(self):
-        return '<{} {} (block number: {}, run id: {}, experiment id: {}, completed: {})>' \
+        return '<{} {} (block number: {}, run id: {}, experiment id: {}, completion date: {})>' \
             .format(self.__class__.__name__,
                     self.number,
                     self.block.number if self.block else None,
@@ -225,7 +236,7 @@ class Trial(db.Model):
                     self.block.run.experiment.id if (self.block is not None and
                                                      self.block.run is not None and
                                                      self.block.run.experiment is not None) else None,
-                    self.completed)
+                    self.completion_date.ctime() if self.completion_date else None)
 
 
 class Factor(db.Model):
