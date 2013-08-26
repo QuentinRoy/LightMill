@@ -85,7 +85,7 @@ def pull_objects(endpoint, values):
 
 
 @exp_api.after_request
-def after_request(response):
+def allow_origin(response):
     """Makes all the api accessible from any origin"""
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
