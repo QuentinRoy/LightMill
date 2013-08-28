@@ -1,12 +1,11 @@
+__author__ = 'Quentin Roy'
+
 from flask.blueprints import Blueprint
 from flask.helpers import url_for
 from sqlalchemy.orm.exc import NoResultFound
-
-__author__ = 'Quentin Roy'
-
 import os
-from flask import jsonify, redirect
-from model import Experiment, Run, Trial, Block
+from flask import jsonify, redirect, request
+from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from time import time
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
@@ -30,8 +29,20 @@ class UnknownElement(Exception):
 
 @exp_api.errorhandler(UnknownElement)
 def handle_invalid_usage(error):
-    response = jsonify(error.to_dict())
+    error_dict = error.to_dict()
+    error_dict['type'] = error.__class__.__name__
+    response = jsonify(error_dict)
     response.status_code = error.status_code
+    return response
+
+
+@exp_api.errorhandler(ExperimentProgressError)
+def handle_invalid_usage(error):
+    response = jsonify({
+        'message': error.args[0],
+        'type': error.__class__.__name__
+    })
+    response.status_code = 405
     return response
 
 
@@ -144,23 +155,36 @@ def expe_runs(experiment):
 @exp_api.route('/experiment/<experiment>/next_run')
 def get_free_run(experiment):
     started_runs = experiment.runs.join(Block, Trial).filter(Trial.completion_date != None).all()
+    target_run = None
     for run in experiment.runs:
         if run not in started_runs:
-            return run.id
+            target_run = run
+            break
+    if target_run:
+        return jsonify(run_info(run))
+    else:
+        response = jsonify({
+            'message': 'The experiment is completed.'
+        })
+        response.status_code = 410
+        return response
+
 
 
 @exp_api.route('/run/<experiment>/<run>')
 def run_props(experiment, run):
-    start = time()
-    return jsonify({
-        'run_id': run.id,
+    return jsonify(run_info(run))
+
+
+def run_info(run):
+    return {
+        'id': run.id,
         'experiment_id': run.experiment.id,
         'completed': run.completed(),
         'started': run.started(),
         'trial_count': run.trial_count(),
-        'block_count': run.block_count(),
-        'req_duration': time() - start
-    })
+        'block_count': run.block_count()
+    }
 
 
 @exp_api.route('/run/<experiment>/<run>/current_trial')
@@ -172,12 +196,16 @@ def run_current_trial(experiment, run):
         response = jsonify({
             'message': 'The run is completed.'
         })
-        response.status_code = 400
+        response.status_code = 410
         return response
 
 
-@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>')
+@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET'))
 def trial_values(experiment, run, block, trial):
+    if request.method == 'POST':
+        # print(request.form)
+        trial.set_completed()
+        db.session.commit()
     return jsonify(trial_info(trial))
 
 
