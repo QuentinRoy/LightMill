@@ -5,6 +5,7 @@ from expapi import exp_api
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
 import os
+import logging
 import default_settings
 
 # app creation
@@ -17,11 +18,11 @@ db.init_app(app)
 db.app = app
 db.create_all()
 
-
 def import_experiment(touchstone_file):
     expe_id = parse_experiment_id(touchstone_file)
     with app.test_request_context():
         if not db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
+            logging.info("Importing experiment {}..".format(expe_id))
             experiment = create_experiment(touchstone_file)
             db.session.add(experiment)
             db.session.commit()

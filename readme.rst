@@ -18,4 +18,4 @@ To make it run, you just have to do something like::
     $ python run.py
 
 The experiment described in `experiment.xml`:code: at the root folder will be automatically imported into the database
-at server startup.
+at server startup (if not already in).
