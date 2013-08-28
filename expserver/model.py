@@ -2,9 +2,15 @@ __author__ = 'Quentin Roy'
 
 from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
 from datetime import datetime
+# import logging
 
 db = SQLAlchemy()
 
+# logging.basicConfig(filename="/Users/quentin/Workspace/Dev/xpserver/dbrequests.log", filemode='w', level=logging.INFO)
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+class ExperimentProgressError(Exception):
+    pass
 
 
 class Experiment(db.Model):
@@ -103,6 +109,8 @@ class Run(db.Model):
     def block_count(self):
         return self.blocks.count()
 
+    def get_block(self, block_number):
+        return self.blocks.filter(Block.number == block_number).one()
 
 
 def _free_number(number_list):
@@ -123,6 +131,16 @@ block_values = db.Table(
 
 
 class Block(db.Model):
+    class BlockQuery(BaseQuery):
+        def get_by_number(self, block_number, run_id, experiment_id):
+            return Block.query \
+                .join(Run, Experiment) \
+                .filter(Block.number == block_number,
+                        Experiment.id == experiment_id,
+                        Run.id == run_id).one()
+
+    query_class = BlockQuery
+
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
     _run_db_id = db.Column(db.Integer, db.ForeignKey(Run._db_id), nullable=False, index=True)
@@ -214,9 +232,22 @@ class Trial(db.Model):
     def completed(self):
         return self.completion_date is not None
 
-    @completed.setter
-    def completed(self, value):
-        self.completion_date = datetime.today() if value else None
+    def set_completed(self):
+        previous = self.previous_trial()
+        if self.completed:
+            raise ExperimentProgressError("Trial already completed.")
+        if previous is not None and not self.previous_trial().completed:
+            raise ExperimentProgressError("Cannot complete trial {}: previous trial is not completed yet. "
+                                          "Trials must be completed sequentially.".format(repr(self)))
+        self.completion_date = datetime.today()
+
+    def previous_trial(self):
+        if self.number <= 0:
+            if self.block.number > 0:
+                block = Block.query.get_by_number(self.block.number - 1, self.run.id, self.experiment.id)
+                return block.trials.filter(Trial.number == block.length() - 1).one()
+        else:
+            return Trial.query.get_by_number(self.number - 1, self.block.number, self.run.id, self.experiment.id)
 
     @property
     def experiment(self):
