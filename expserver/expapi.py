@@ -190,18 +190,22 @@ def run_info(run):
 @exp_api.route('/run/<experiment>/<run>/current_trial')
 def run_current_trial(experiment, run):
     trial = run.current_trial()
-    if trial:
-        return jsonify(trial_info(trial))
-    else:
-        response = jsonify({
-            'message': 'The run is completed.'
-        })
-        response.status_code = 410
-        return response
+    return jsonify(trial_info(trial))
+
+@exp_api.route('/block/<experiment>/<run>/<int:block>')
+def block_props(experiment, run, block):
+    props = {
+        'number': block.number,
+        'measure_block_number': block.measure_block_number(),
+        'values': dict((value.factor.id, value.id) for value in block.values),
+        'total': run.block_count()
+    }
+    return jsonify(props)
+
 
 
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET'))
-def trial_values(experiment, run, block, trial):
+def trial_props(experiment, run, block, trial):
     if request.method == 'POST':
         # print(request.form)
         trial.set_completed()
@@ -217,7 +221,8 @@ def trial_info(trial):
         'run_id': trial.run.id,
         'practice': trial.block.practice,
         'measure_block_number': trial.block.measure_block_number(),
-        'values': dict((value.factor.id, value.id) for value in trial.iter_all_values()),
+        'values': dict((value.factor.id, value.id) for value in trial.values),
+        'block_values': dict((value.factor.id, value.id) for value in trial.block.values),
         'total': trial.block.length(),
         'completion_date': trial.completion_date
     }
