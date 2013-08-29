@@ -60,7 +60,9 @@ class Run(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
 
-    id = db.Column(db.String(10), index=True)
+    id = db.Column(db.String(20), index=True)
+
+    token = db.Column(db.String(20), unique=True)
 
     experiment = db.relationship(Experiment,
                                  backref=db.backref('runs',
@@ -78,6 +80,10 @@ class Run(db.Model):
         self.experiment = experiment
 
     @property
+    def locked(self):
+        return self.token is not None
+
+    @property
     def trials(self):
         return Trial.query.options(db.joinedload(Trial.block)) \
             .join(Block, Run).order_by(Block.number, Trial.number) \
@@ -87,10 +93,11 @@ class Run(db.Model):
         return self.trials.filter(Trial.completion_date == None).first()
 
     def __repr__(self):
-        return '<{} {} (experiment id: {})>' \
+        return '<{} {} (experiment id: {}, token: {})>' \
             .format(self.__class__.__name__,
                     self.id,
-                    self.experiment.id if self.experiment else None)
+                    self.experiment.id if self.experiment else None,
+                    self.token)
 
     def completed(self):
         exist_query = self.trials.filter(Trial.completion_date == None).exists()
@@ -171,7 +178,7 @@ class Block(db.Model):
         self.values = values
 
     def __repr__(self):
-        return '<{} {} (run id: {}, experiment id: {})>' \
+        return '<{} {} (run id: {}, experiment id: {}>' \
             .format(self.__class__.__name__,
                     self.number,
                     self.run.id if self.run is not None else None,
@@ -285,9 +292,9 @@ class Factor(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
 
-    id = db.Column(db.String(40), nullable=False)
+    id = db.Column(db.String(80), nullable=False)
     name = db.Column(db.String(200))
-    type = db.Column(db.String(40))
+    type = db.Column(db.String(80))
     kind = db.Column(db.String(20))
     tag = db.Column(db.String(80))
 

@@ -1,9 +1,12 @@
+from sqlalchemy.exc import IntegrityError
+
 __author__ = 'Quentin Roy'
 
 from flask.blueprints import Blueprint
 from flask.helpers import url_for
 from sqlalchemy.orm.exc import NoResultFound
 import os
+import uuid
 from flask import jsonify, redirect, request
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from time import time
@@ -146,7 +149,8 @@ def expe_runs(experiment):
     for run in experiment.runs:
         runs_props[run.id] = {
             'completed': run.completed(),
-            'started': run.started()
+            'started': run.started(),
+            'locked': run.locked
         }
     runs_props['req_duration'] = time() - start
     return jsonify(runs_props)
@@ -164,15 +168,70 @@ def get_free_run(experiment):
         return jsonify(run_info(run))
     else:
         response = jsonify({
-            'message': 'The experiment is completed.'
+            'message': 'The experiment is completed.',
+            'type': 'ExperimentAlreadyCompleted'
         })
         response.status_code = 410
         return response
 
 
-
 @exp_api.route('/run/<experiment>/<run>')
 def run_props(experiment, run):
+    return jsonify(run_info(run))
+
+
+@exp_api.route('/run/<experiment>/<run>/lock')
+def get_lock_token(experiment, run):
+    token = None
+    if run.locked:
+        response = jsonify({
+            'message': 'Run {} of {} is already locked.'.format(run.id, experiment.id),
+            'type': 'RunAlreadyLocked'
+        })
+        response.status_code = 405
+        return response
+
+    while token is None:
+        try:
+            token = str(uuid.uuid4())
+            run.token = token
+            db.session.commit()
+        except IntegrityError:
+            # that should never happen but... Who knows?
+            token = None
+    print("Run {} locked.".format(repr(run)))
+    return jsonify({
+        'token': token,
+        'run_id': run.id,
+        'experiment_id': experiment.id,
+    })
+
+
+@exp_api.route('/run/<experiment>/<run>/unlock', methods=['POST'])
+def unlock_run(experiment, run):
+    if not run.locked:
+        response = jsonify({
+            'message': 'Run {} of {} is not locked.'.format(run.id, experiment.id),
+            'type': 'RunNotLocked'
+        })
+        response.status_code = 405
+        return response
+    elif request.form.get('token', None) != run.token:
+        response = jsonify({
+            'message': 'Wrong token: {} for run {}'.format(request.data.get('token', None), run.id),
+            'type': 'WrongToken'
+        })
+        response.status_code = 405
+        return response
+    else:
+        print("Run {} unlocked.".format(repr(run)))
+        return force_unlock_run(experiment, run)
+
+
+@exp_api.route('/run/<experiment>/<run>/force_unlock')
+def force_unlock_run(experiment, run):
+    run.token = None
+    db.session.commit()
     return jsonify(run_info(run))
 
 
@@ -183,7 +242,8 @@ def run_info(run):
         'completed': run.completed(),
         'started': run.started(),
         'trial_count': run.trial_count(),
-        'block_count': run.block_count()
+        'block_count': run.block_count(),
+        'locked': run.locked
     }
 
 
@@ -191,6 +251,7 @@ def run_info(run):
 def run_current_trial(experiment, run):
     trial = run.current_trial()
     return jsonify(trial_info(trial))
+
 
 @exp_api.route('/block/<experiment>/<run>/<int:block>')
 def block_props(experiment, run, block):
@@ -203,11 +264,25 @@ def block_props(experiment, run, block):
     return jsonify(props)
 
 
-
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET'))
 def trial_props(experiment, run, block, trial):
     if request.method == 'POST':
-        # print(request.form)
+        request_token = request.form.get('token', None)
+        if run.token is None:
+            response = jsonify({
+                'message': 'Run must be locked before writing.',
+                'type': 'RunNotLocked'
+            })
+            response.status_code = 405
+            return response
+        elif request_token != run.token:
+            response = jsonify({
+                'message': 'Wrong token: {} for run {}'.format(request_token, run.id),
+                'type': 'WrongToken'
+            })
+            response.status_code = 405
+            return response
+            # print(request.form)
         trial.set_completed()
         db.session.commit()
     return jsonify(trial_info(trial))
