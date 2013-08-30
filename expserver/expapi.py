@@ -181,7 +181,7 @@ def run_props(experiment, run):
 
 
 @exp_api.route('/run/<experiment>/<run>/lock')
-def get_lock_token(experiment, run):
+def lock_run(experiment, run):
     token = None
     if run.locked:
         response = jsonify({
@@ -224,7 +224,6 @@ def unlock_run(experiment, run):
         response.status_code = 405
         return response
     else:
-        print("Run {} unlocked.".format(repr(run)))
         return force_unlock_run(experiment, run)
 
 
@@ -232,6 +231,7 @@ def unlock_run(experiment, run):
 def force_unlock_run(experiment, run):
     run.token = None
     db.session.commit()
+    print("Run {} unlocked.".format(repr(run)))
     return jsonify(run_info(run))
 
 
@@ -250,6 +250,13 @@ def run_info(run):
 @exp_api.route('/run/<experiment>/<run>/current_trial')
 def run_current_trial(experiment, run):
     trial = run.current_trial()
+    if not trial:
+        response = jsonify({
+            'message': 'Run is completed.',
+            'type': 'RunCompleted'
+        })
+        response.status_code = 410
+        return response
     return jsonify(trial_info(trial))
 
 
