@@ -48,6 +48,15 @@ def handle_invalid_usage(error):
     response.status_code = 405
     return response
 
+@exp_api.errorhandler(Exception)
+def handle_invalid_usage(error):
+    response = jsonify({
+        'message': str(error),
+        'type': error.__class__.__name__
+    })
+    response.status_code = 500
+    return response
+
 
 def _pull_trial(values):
     trial = Trial.query.get_by_number(values['trial'], values['block'], values['run'], values['experiment'])
