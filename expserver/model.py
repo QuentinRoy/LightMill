@@ -1,3 +1,5 @@
+from sqlalchemy.ext.declarative.api import AbstractConcreteBase, declared_attr
+
 __author__ = 'Quentin Roy'
 
 from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
@@ -31,12 +33,18 @@ class Experiment(db.Model):
                               lazy='dynamic',
                               cascade="all, delete-orphan")
 
-    def __init__(self, id, name, factors, author=None, description=None):
+    measures = db.relationship('Measure',
+                               backref=db.backref('experiment', lazy='joined'),
+                               lazy='dynamic',
+                               cascade="all, delete-orphan")
+
+    def __init__(self, id, name, factors, measures, author=None, description=None):
         self.name = name
         self.id = id
         self.author = author
         self.description = description
         self.factors = factors
+        self.measures = measures
 
     def __repr__(self):
         return "<{} {} (name: '{}')>" \
@@ -47,6 +55,12 @@ class Experiment(db.Model):
 
     def get_run(self, run_id):
         return self.runs.filter_by(id=run_id).one()
+
+    def trial_measures(self):
+        return self.measures.filter('Measure.trial_level' == True)
+
+    def event_measures(self):
+        return self.measures.filter('Measure.event_level' == True)
 
 
 class Run(db.Model):
@@ -161,7 +175,7 @@ class Block(db.Model):
 
     number = db.Column(db.Integer, nullable=False)
     practice = db.Column(db.Boolean)
-    values = db.relationship('FactorValue', secondary=block_values)
+    factor_values = db.relationship('FactorValue', secondary=block_values)
 
     __table_args__ = (
         db.UniqueConstraint("_run_db_id", "number"),
@@ -175,7 +189,7 @@ class Block(db.Model):
         self.practice = practice
         self.number = number if number is not None else _free_number(block.number for block in run.blocks)
         self.run = run
-        self.values = values
+        self.factor_values = values
 
     def __repr__(self):
         return '<{} {} (run id: {}, experiment id: {}>' \
@@ -197,8 +211,8 @@ class Block(db.Model):
         return self.trials.count()
 
 
-trial_values = db.Table(
-    'trial_values',
+trial_factor_values = db.Table(
+    'trial_factor_values',
     db.Column('trial_db_id', db.Integer, db.ForeignKey('trial._db_id')),
     db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id'))
 )
@@ -227,13 +241,26 @@ class Trial(db.Model):
                                                order_by='Trial.number'),
                             lazy='joined')
 
-    values = db.relationship('FactorValue', secondary=trial_values)
+    factor_values = db.relationship('FactorValue', secondary=trial_factor_values)
     number = db.Column(db.Integer, nullable=False)
     completion_date = db.Column(db.DateTime, index=True)
+    measure_values = db.relationship('TrialMeasureValue', cascade="all, delete-orphan", backref=db.backref('trial'))
+
+    _events = db.relationship('Event', cascade="all, delete-orphan", backref=db.backref('trial'), lazy="dynamic")
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
     )
+
+    def add_events(self, events):
+        num = self._events.count()
+        for event in events:
+            event._number = num
+            num += 1
+        self._events.extend(events)
+
+    def add_event(self, event):
+        self.add_events((event,))
 
     @property
     def completed(self):
@@ -265,8 +292,8 @@ class Trial(db.Model):
     def run(self):
         return self.block.run if self.block is not None else None
 
-    def iter_all_values(self):
-        for value in self.values:
+    def iter_all_factor_values(self):
+        for value in self.factor_values:
             yield value
         for value in self.block.values:
             yield value
@@ -274,7 +301,7 @@ class Trial(db.Model):
     def __init__(self, block, values, number=None):
         self.number = number if number is not None else _free_number(trial.number for trial in block.trials)
         self.block = block
-        self.values = values
+        self.factor_values = values
 
     def __repr__(self):
         return '<{} {} (block number: {}, run id: {}, experiment id: {}, completion date: {})>' \
@@ -328,9 +355,9 @@ class Factor(db.Model):
 
 class FactorValue(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    _factor_db_id = db.Column(db.String(40), db.ForeignKey(Factor._db_id), nullable=False)
+    _factor_db_id = db.Column(db.Integer, db.ForeignKey(Factor._db_id), nullable=False)
 
-    id = db.Column(db.String(10), nullable=False)
+    id = db.Column(db.String(40), nullable=False)
     name = db.Column(db.String(200))
     value = db.Column(db.Text)
 
@@ -351,6 +378,134 @@ class FactorValue(db.Model):
         )
 
 
+class Measure(db.Model):
+    class MeasureQuery(BaseQuery):
+        def get_by_id(self, measure_id, experiment_id):
+            return Measure.query \
+                .join(Experiment) \
+                .filter(Measure.id == measure_id,
+                        Experiment.id == experiment_id).one()
+
+    query_class = MeasureQuery
+
+    _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
+
+    id = db.Column(db.String(80), nullable=False)
+    trial_level = db.Column(db.Boolean, nullable=False)
+    event_level = db.Column(db.Boolean, nullable=False)
+    name = db.Column(db.String(200))
+    type = db.Column(db.String(80))
+
+    __table_args__ = (
+        db.CheckConstraint("trial_level OR event_level", name='at_least_one'),
+        # db.UniqueConstraint("id", "_experiment_db_id"),
+        db.Index('index_measure', 'id', '_experiment_db_id', unique=True)
+    )
+
+    def __init__(self, id, type, event_level=False, trial_level=False, name=None):
+        self.id = id
+        self.name = name
+        self.type = type
+        self.event_level = event_level
+        self.trial_level = trial_level
+
+    def levels(self):
+        levels = []
+        if self.trial_level:
+            levels.append('trial')
+        if self.event_level:
+            levels.append('event')
+        return levels
+
+    def __repr__(self):
+        levels = self.levels()
+        return "<{} {} (name: '{}', experiment id: {}, type: {}, level{}: {})>" \
+            .format(self.__class__.__name__,
+                    self.id,
+                    self.name,
+                    self.experiment.id if self.experiment is not None else None,
+                    self.type,
+                    's' if len(levels) > 1 else '',
+                    levels.join(' and '))
+
+
+class Event(db.Model):
+    _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False, index=True)
+    _number = db.Column(db.Integer, nullable=False)
+    measure_values = db.relationship('EventMeasureValue', backref=db.backref('event'), cascade="all, delete-orphan")
+
+    @property
+    def number(self):
+        return self._number
+
+    def __init__(self, measure_values):
+        self.measure_values = measure_values
+
+
+    __table_args__ = (
+        db.UniqueConstraint("_number", "_trial_db_id"),
+    )
+
+
+class MeasureValue(AbstractConcreteBase, db.Model):
+    _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    @declared_attr
+    def _measure_db_id(cls):
+        return db.Column(db.Integer, db.ForeignKey(Measure._db_id), nullable=False)
+
+    value = db.Column(db.Text, nullable=False)
+
+    @declared_attr
+    def measure(cls):
+        return db.relationship(Measure)
+
+    def __init__(self, value, measure):
+        self.measure = measure
+        self.value = value
+
+    def __repr__(self):
+        return "<{} of {} (value: '{}')>".format(self.__class__.__name__,
+                                                 self.measure.id,
+                                                 self.value)
+
+
+class TrialMeasureValue(MeasureValue):
+    __tablename__ = 'trial_measure_value'
+    __mapper_args__ = {'concrete': True,
+                       'polymorphic_identity': 'trial_measure_value'}
+    _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False)
+
+    __table_args__ = (
+        # db.UniqueConstraint("_measure_db_id", "_trial_db_id"),
+        db.Index('index_trial_measure_value', '_measure_db_id', '_trial_db_id', unique=True),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(TrialMeasureValue, self).__init__(*args, **kwargs)
+        if not self.measure.trial_level:
+            raise ValueError("Associated measure ({}) is not at the trial level.".format(self.measure.id))
+
+
+class EventMeasureValue(MeasureValue):
+    __tablename__ = 'event_measure_value'
+    __mapper_args__ = {'concrete': True,
+                       'polymorphic_identity': 'event_measure_value'}
+    _event_db_id = db.Column(db.Integer, db.ForeignKey(Event._db_id), nullable=False)
+
+    __table_args__ = (
+        # db.UniqueConstraint("_measure_db_id", "_event_db_id"),
+        db.Index('index_event_measure_value', '_measure_db_id', '_event_db_id', unique=True),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(EventMeasureValue, self).__init__(*args, **kwargs)
+        if not self.measure.event_level:
+            raise ValueError("Associated measure ({}) is not at the event level.".format(self.measure.id))
+
+
 #################################
 #                               #
 #           TEST                #
@@ -367,13 +522,22 @@ if __name__ == '__main__':
     def gen_factor_values():
         return (FactorValue('v{}'.format(v_num), 'Test value number {}'.format(v_num)) for v_num in range(3))
 
-    def gen_factors():
-        for f_num in range(3):
+    def gen_factors(num=3):
+        for f_num in range(num):
             values = list(gen_factor_values())
             yield Factor(id='f{}'.format(f_num),
                          values=values,
                          type=random.choice(('Integer', 'String')),
                          name='Test Factor number {}'.format(f_num))
+
+    def gen_measures(num=8):
+        for m_num in range(num):
+            levels = random.choice(((True, True), (True, False), (False, True)))
+            yield Measure(id='m{}'.format(m_num),
+                          type=random.choice(('Integer', 'String')),
+                          name='Test Measure number {}'.format(m_num),
+                          trial_level=levels[0],
+                          event_level=levels[1])
 
     def random_values(experiment, number):
         factors = random.sample(experiment.factors.all(), number)
@@ -382,10 +546,20 @@ if __name__ == '__main__':
     def create_objs():
 
         for exp_num in range(2):
+            measures = list(gen_measures())
+            trial_measure = Measure(id='trial_measure',
+                                    type=random.choice(('Integer', 'String')),
+                                    trial_level=True)
+            event_measure = Measure(id='event_measure',
+                                    type=random.choice(('Integer', 'String')),
+                                    event_level=True)
+            measures.append(trial_measure)
 
             exp = Experiment('E{}'.format(exp_num),
                              'Test Experiment number {}'.format(exp_num),
-                             factors=list(gen_factors()))
+                             factors=list(gen_factors()),
+                             measures=measures)
+            exp.measures.append(event_measure)
 
             factor_sup = Factor('fsup',
                                 type='Integer',
@@ -400,9 +574,16 @@ if __name__ == '__main__':
                                   practice=block_num % 3 == 0,
                                   values=random_values(exp, 2))
                     for _ in range(10):
-                        Trial(block, values=random_values(exp, 2))
+                        trial = Trial(block, values=random_values(exp, 2))
+                        trial.measure_values.append(TrialMeasureValue(random.randint(0, 1000), trial_measure))
+                        for _ in range(5):
+                            event = Event(
+                                [EventMeasureValue("lorem value {}".format(random.randint(0, 1000)), event_measure)])
+                            trial.add_event(event)
+
             db.session.add(exp)
-        db.session.commit()
+            db.session.commit()
+
 
     def read():
         for exp in Experiment.query.all():
@@ -412,12 +593,12 @@ if __name__ == '__main__':
                 print('  ' + repr(factor))
             print('trials:')
             for run in exp.runs:
-                for block in run.blocks:
-                    for trial in block.trials:
-                        print('  ' + repr(trial))
+                for trial in run.trials:
+                    print('  ' + repr(trial))
 
             print('Get factor f1: ' + repr(exp.get_factor('f1')))
             print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measure_block_number()))
+
 
     db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))
     app = Flask(os.path.splitext(__name__)[0])

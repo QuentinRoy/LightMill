@@ -2,8 +2,7 @@ __author__ = 'Quentin Roy'
 
 from xml.etree import ElementTree
 from xml.dom import pulldom
-import default_settings
-from model import Experiment, Run, Trial, Factor, FactorValue, Block, db
+from model import Experiment, Run, Trial, Factor, FactorValue, Block, db, Measure
 
 
 def create_experiment(touchstone_file):
@@ -18,16 +17,17 @@ def parse_experiment_id(touchstone_file):
             return node.getAttribute('id')
 
 
-def _nonizeString(string):
+def _nonize_string(string):
     return None if string == '' else string
 
 
 def _parse_experiment(dom):
     exp = Experiment(id=dom.get('id'),
-                     name=_nonizeString(dom.get('name')),
+                     name=_nonize_string(dom.get('name')),
                      factors=[_parse_factor(factor_dom) for factor_dom in dom.findall('factor')],
                      author=dom.get('author'),
-                     description=_nonizeString(dom.get('description')))
+                     measures=[_parse_measure(measure_dom) for measure_dom in dom.findall('measure')],
+                     description=_nonize_string(dom.get('description')))
     for run_dom in dom.findall('run'):
         _parse_run(run_dom, exp)
     return exp
@@ -35,17 +35,34 @@ def _parse_experiment(dom):
 
 def _parse_factor(dom):
     return Factor(id=dom.get('id'),
-                  name=_nonizeString(dom.get('name')),
+                  name=_nonize_string(dom.get('name')),
                   type=dom.get('type'),
-                  kind=_nonizeString(dom.get('kind')),
-                  tag=_nonizeString(dom.get('tag')),
+                  kind=_nonize_string(dom.get('kind')),
+                  tag=_nonize_string(dom.get('tag')),
                   values=[_parse_value(v_dom) for v_dom in dom.findall('value')])
+
+
+def _parse_measure(dom):
+    trial_level = False
+    event_level = False
+    for attrib, value in dom.items():
+        norm_value = value.strip().lower()
+        if 'log' in attrib and norm_value == 'ok':
+            trial_level = True
+        if 'cine' in attrib and norm_value == 'ok':
+            event_level = True
+
+    return Measure(id=dom.get('id'),
+                  name=_nonize_string(dom.get('name')),
+                  type=dom.get('type'),
+                  trial_level=trial_level,
+                  event_level=event_level)
 
 
 def _parse_value(dom):
     return FactorValue(
         id=dom.get('id'),
-        name=_nonizeString(dom.get('name')))
+        name=_nonize_string(dom.get('name')))
 
 
 def _parse_run(dom, experiment):
@@ -89,21 +106,3 @@ def _parse_trial(dom, block):
                   number=int(num) if num is not None else None,
                   values=values)
     return trial
-
-
-if __name__ == '__main__':
-    from run import create_app
-    from model import db
-    import os
-
-    db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../parse_test.db'))
-    app = create_app('sqlite:////' + db_uri)
-
-    touchstone_file = os.path.abspath(os.path.join(os.path.dirname(__name__), '../experiment.xml'))
-
-    if os.path.exists(db_uri):
-        db.drop_all()
-
-    db.create_all()
-    create_experiment(touchstone_file, db.session)
-    db.session.commit()
