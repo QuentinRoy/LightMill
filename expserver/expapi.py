@@ -307,8 +307,8 @@ def trial_info(trial):
         'run_id': trial.run.id,
         'practice': trial.block.practice,
         'measure_block_number': trial.block.measure_block_number(),
-        'values': dict((value.factor.id, value.id) for value in trial.values),
-        'block_values': dict((value.factor.id, value.id) for value in trial.block.values),
+        'values': dict((value.factor.id, value.id) for value in trial.factor_values),
+        'block_values': dict((value.factor.id, value.id) for value in trial.block.factor_values),
         'total': trial.block.length(),
         'completion_date': trial.completion_date
     }
