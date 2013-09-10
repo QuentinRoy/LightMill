@@ -1,9 +1,12 @@
-from sqlalchemy.ext.declarative.api import AbstractConcreteBase, declared_attr
+from sqlalchemy.orm.exc import NoResultFound
 
 __author__ = 'Quentin Roy'
 
 from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
 from datetime import datetime
+from sqlalchemy.ext.declarative.api import AbstractConcreteBase, declared_attr
+from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.exc import NoResultFound
 # import logging
 
 db = SQLAlchemy()
@@ -244,23 +247,27 @@ class Trial(db.Model):
     factor_values = db.relationship('FactorValue', secondary=trial_factor_values)
     number = db.Column(db.Integer, nullable=False)
     completion_date = db.Column(db.DateTime, index=True)
-    measure_values = db.relationship('TrialMeasureValue', cascade="all, delete-orphan", backref=db.backref('trial'))
+    measure_values = db.relationship('TrialMeasureValue',
+                                     cascade="all, delete-orphan",
+                                     backref=db.backref('trial'),
+                                     collection_class=attribute_mapped_collection('measure.id'))
 
-    _events = db.relationship('Event', cascade="all, delete-orphan", backref=db.backref('trial'), lazy="dynamic")
+    _events = db.relationship('Event',
+                              cascade="all, delete-orphan",
+                              backref=db.backref('trial'),
+                              lazy="dynamic",
+                              order_by='Event._number')
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
     )
 
-    def add_events(self, events):
-        num = self._events.count()
-        for event in events:
-            event._number = num
-            num += 1
-        self._events.extend(events)
+    def iterevents(self):
+        for event in self._events:
+            yield event
 
-    def add_event(self, event):
-        self.add_events((event,))
+    def event_count(self):
+        self._events.count()
 
     @property
     def completed(self):
@@ -302,6 +309,11 @@ class Trial(db.Model):
         self.number = number if number is not None else _free_number(trial.number for trial in block.trials)
         self.block = block
         self.factor_values = values
+
+    def record_measure_value(self, measure_id, value):
+        measure = Measure.query.get_by_id(measure_id, self.experiment.id)
+        measure_value = TrialMeasureValue(value, measure)
+        self.measure_values[measure_id] = measure_value
 
     def __repr__(self):
         return '<{} {} (block number: {}, run id: {}, experiment id: {}, completion date: {})>' \
@@ -434,14 +446,21 @@ class Event(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False, index=True)
     _number = db.Column(db.Integer, nullable=False)
-    measure_values = db.relationship('EventMeasureValue', backref=db.backref('event'), cascade="all, delete-orphan")
+    measure_values = db.relationship('EventMeasureValue',
+                                     cascade="all, delete-orphan",
+                                     backref=db.backref('event'),
+                                     collection_class=attribute_mapped_collection('measure.id'))
 
     @property
     def number(self):
         return self._number
 
-    def __init__(self, measure_values):
-        self.measure_values = measure_values
+    def __init__(self, measure_values, trial):
+        self.trial = trial
+        for measure_id, value in measure_values.iteritems():
+            if not isinstance(value, MeasureValue):
+                value = EventMeasureValue(value, measure_id, self.trial.experiment.id)
+            self.measure_values[measure_id] = value
 
 
     __table_args__ = (
@@ -454,15 +473,21 @@ class MeasureValue(AbstractConcreteBase, db.Model):
 
     @declared_attr
     def _measure_db_id(cls):
-        return db.Column(db.Integer, db.ForeignKey(Measure._db_id), nullable=False)
+        return db.Column(db.Integer, db.ForeignKey(Measure._db_id), nullable=False, index=True)
 
     value = db.Column(db.Text, nullable=False)
 
     @declared_attr
     def measure(cls):
-        return db.relationship(Measure)
+        return db.relationship(Measure, lazy='joined')
 
-    def __init__(self, value, measure):
+    def __init__(self, value, measure, experiment_id=None):
+        if not isinstance(measure, Measure):
+            try:
+                measure = Measure.query.get_by_id(measure, experiment_id)
+            except NoResultFound:
+                raise NoResultFound("Cannot find target measure: "+measure)
+                
         self.measure = measure
         self.value = value
 
@@ -584,7 +609,6 @@ if __name__ == '__main__':
             db.session.add(exp)
             db.session.commit()
 
-
     def read():
         for exp in Experiment.query.all():
             print('------ ' + repr(exp) + ' -------')
@@ -598,7 +622,6 @@ if __name__ == '__main__':
 
             print('Get factor f1: ' + repr(exp.get_factor('f1')))
             print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measure_block_number()))
-
 
     db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))
     app = Flask(os.path.splitext(__name__)[0])

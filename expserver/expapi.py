@@ -9,7 +9,7 @@ from sqlalchemy.orm.exc import NoResultFound
 import os
 import uuid
 from flask import jsonify, redirect, request, render_template
-from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
+from model import Experiment, Run, Trial, Block, db, ExperimentProgressError, Event
 from time import time
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
@@ -47,16 +47,6 @@ def handle_invalid_usage(error):
         'type': error.__class__.__name__
     })
     response.status_code = 405
-    return response
-
-
-@exp_api.errorhandler(Exception)
-def handle_invalid_usage(error):
-    response = jsonify({
-        'message': str(error),
-        'type': error.__class__.__name__
-    })
-    response.status_code = 500
     return response
 
 
@@ -311,7 +301,6 @@ def trial_props(experiment, run, block, trial):
     elif request.method == 'POST':
         data = request.get_json()
         token = data['token']
-        # form = request.form
         if run.token is None:
             response = jsonify({
                 'message': 'Run must be locked before writing.',
@@ -321,12 +310,18 @@ def trial_props(experiment, run, block, trial):
             return response
         elif token != run.token:
             response = jsonify({
-                'message': 'Wrong token: {} for run {}'.format(request_token, run.id),
+                'message': 'Wrong token: {} for run {}'.format(token, run.id),
                 'type': 'WrongToken'
             })
             response.status_code = 405
             return response
-            # print(request.form)
+        for measure_id, measure_value in data['measures'].iteritems():
+            if measure_id != 'events':
+                trial.record_measure_value(measure_id, measure_value)
+        events = data['measures']['events']
+        for event_measures in events:
+            Event(event_measures, trial)
+
         trial.set_completed()
         db.session.commit()
     return jsonify(trial_info(trial))
