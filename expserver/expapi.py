@@ -1,13 +1,14 @@
+from collections import OrderedDict
 from sqlalchemy.exc import IntegrityError
 
 __author__ = 'Quentin Roy'
 
 from flask.blueprints import Blueprint
-from flask.helpers import url_for
+from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
 import os
 import uuid
-from flask import jsonify, redirect, request
+from flask import jsonify, redirect, request, render_template
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from time import time
 
@@ -47,6 +48,7 @@ def handle_invalid_usage(error):
     })
     response.status_code = 405
     return response
+
 
 @exp_api.errorhandler(Exception)
 def handle_invalid_usage(error):
@@ -153,6 +155,23 @@ def expe_props(experiment):
         'req_duration': time() - start
     }
     return jsonify(exp_data)
+
+
+@exp_api.route('/experiment/<experiment>/measures')
+def sorted_measures(experiment):
+    measures = {
+        "trial_level": OrderedDict(),
+        "event_level": OrderedDict()
+    }
+    for measure in sorted(experiment.measures, key=lambda m: m.id):
+        if measure.trial_level:
+            measures['trial_level'][measure.id] = measure.name
+        if measure.event_level:
+            measures['event_level'][measure.id] = measure.name
+    if request.is_xhr:
+        return jsonify(measures)
+    else:
+        return render_template('measures.html', experiment=experiment, measures=measures)
 
 
 @exp_api.route('/experiment/<experiment>/status')
@@ -283,11 +302,16 @@ def block_props(experiment, run, block):
     }
     return jsonify(props)
 
-
-@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET'))
+@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET', 'OPTIONS'))
 def trial_props(experiment, run, block, trial):
-    if request.method == 'POST':
-        request_token = request.form.get('token', None)
+    if request.method == 'OPTIONS':
+        resp = make_response()
+        resp.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return resp
+    elif request.method == 'POST':
+        data = request.get_json()
+        token = data['token']
+        # form = request.form
         if run.token is None:
             response = jsonify({
                 'message': 'Run must be locked before writing.',
@@ -295,7 +319,7 @@ def trial_props(experiment, run, block, trial):
             })
             response.status_code = 405
             return response
-        elif request_token != run.token:
+        elif token != run.token:
             response = jsonify({
                 'message': 'Wrong token: {} for run {}'.format(request_token, run.id),
                 'type': 'WrongToken'

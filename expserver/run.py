@@ -21,7 +21,7 @@ def import_experiment(touchstone_file):
     expe_id = parse_experiment_id(touchstone_file)
     with app.test_request_context():
         if not db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
-            print("Importing experiment {}..".format(expe_id))
+            print("Importing experiment {} from {}..".format(expe_id, touchstone_file))
             experiment = create_experiment(touchstone_file)
             db.session.add(experiment)
             db.session.commit()
