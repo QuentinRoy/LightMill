@@ -9,7 +9,8 @@ from sqlalchemy.orm.exc import NoResultFound
 import os
 import uuid
 from flask import jsonify, redirect, request, render_template
-from model import Experiment, Run, Trial, Block, db, ExperimentProgressError, Event
+from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
+from model import Event, TrialMeasureValue, EventMeasureValue
 from time import time
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
@@ -129,8 +130,8 @@ def expe_props(experiment):
             'values': dict((value.id, value.name) for value in factor.values)
         }
     measures = {}
-    for measure in experiment.measures:
-        measures[measure.id] = {
+    for measure_id, measure in experiment.measures.items():
+        measures[measure_id] = {
             'name': measure.name,
             'levels': measure.levels(),
             'type': measure.type
@@ -153,7 +154,7 @@ def sorted_measures(experiment):
         "trial_level": OrderedDict(),
         "event_level": OrderedDict()
     }
-    for measure in sorted(experiment.measures, key=lambda m: m.id):
+    for measure in sorted(experiment.measures.values(), key=lambda m: m.id):
         if measure.trial_level:
             measures['trial_level'][measure.id] = measure.name
         if measure.event_level:
@@ -292,6 +293,7 @@ def block_props(experiment, run, block):
     }
     return jsonify(props)
 
+
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET', 'OPTIONS'))
 def trial_props(experiment, run, block, trial):
     if request.method == 'OPTIONS':
@@ -315,16 +317,35 @@ def trial_props(experiment, run, block, trial):
             })
             response.status_code = 405
             return response
-        for measure_id, measure_value in data['measures'].iteritems():
+        measures = experiment.measures
+        for measure_id, measure_value in _convert_measures(data['measures']):
             if measure_id != 'events':
-                trial.record_measure_value(measure_id, measure_value)
-        events = data['measures']['events']
-        for event_measures in events:
-            Event(event_measures, trial)
+                trial.measure_values.append(TrialMeasureValue(measure_value, measures[measure_id]))
+        event_num = 0
+        for event_measures in data['measures']['events']:
+            values = []
+            for measure_id, measure_value in _convert_measures(event_measures):
+                values.append(EventMeasureValue(measure_value, measures[measure_id]))
+            Event(values, event_num, trial)
+            event_num += 1
 
         trial.set_completed()
         db.session.commit()
     return jsonify(trial_info(trial))
+
+
+def _convert_measures(measures):
+    for measure_path, value in _get_measures_paths(measures):
+        yield '.'.join(measure_path), value
+
+
+def _get_measures_paths(measures):
+    if isinstance(measures, dict):
+        for path_head, path_tail in measures.iteritems():
+            for path_tail, value in _get_measures_paths(path_tail):
+                yield [path_head] + path_tail, value
+    else:
+        yield [], measures
 
 
 def trial_info(trial):

@@ -6,7 +6,6 @@ from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
 from datetime import datetime
 from sqlalchemy.ext.declarative.api import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm.collections import attribute_mapped_collection
-from sqlalchemy.orm.exc import NoResultFound
 # import logging
 
 db = SQLAlchemy()
@@ -38,8 +37,8 @@ class Experiment(db.Model):
 
     measures = db.relationship('Measure',
                                backref=db.backref('experiment', lazy='joined'),
-                               lazy='dynamic',
-                               cascade="all, delete-orphan")
+                               cascade="all, delete-orphan",
+                               collection_class=attribute_mapped_collection('id'))
 
     def __init__(self, id, name, factors, measures, author=None, description=None):
         self.name = name
@@ -250,24 +249,18 @@ class Trial(db.Model):
     measure_values = db.relationship('TrialMeasureValue',
                                      cascade="all, delete-orphan",
                                      backref=db.backref('trial'),
-                                     collection_class=attribute_mapped_collection('measure.id'))
+                                     lazy='dynamic')
 
-    _events = db.relationship('Event',
-                              cascade="all, delete-orphan",
-                              backref=db.backref('trial'),
-                              lazy="dynamic",
-                              order_by='Event._number')
+    events = db.relationship('Event',
+                             cascade="all, delete-orphan",
+                             backref=db.backref('trial'),
+                             lazy="dynamic",
+                             order_by='Event.number')
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
     )
 
-    def iterevents(self):
-        for event in self._events:
-            yield event
-
-    def event_count(self):
-        self._events.count()
 
     @property
     def completed(self):
@@ -439,32 +432,26 @@ class Measure(db.Model):
                     self.experiment.id if self.experiment is not None else None,
                     self.type,
                     's' if len(levels) > 1 else '',
-                    levels.join(' and '))
+                    ' and '.join(levels))
 
 
 class Event(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False, index=True)
-    _number = db.Column(db.Integer, nullable=False)
+    number = db.Column(db.Integer, nullable=False)
     measure_values = db.relationship('EventMeasureValue',
                                      cascade="all, delete-orphan",
                                      backref=db.backref('event'),
-                                     collection_class=attribute_mapped_collection('measure.id'))
+                                     lazy='dynamic')
 
-    @property
-    def number(self):
-        return self._number
-
-    def __init__(self, measure_values, trial):
+    def __init__(self, measure_values, number, trial=None):
+        self.measure_values = measure_values
+        self.number = number
         self.trial = trial
-        for measure_id, value in measure_values.iteritems():
-            if not isinstance(value, MeasureValue):
-                value = EventMeasureValue(value, measure_id, self.trial.experiment.id)
-            self.measure_values[measure_id] = value
 
 
     __table_args__ = (
-        db.UniqueConstraint("_number", "_trial_db_id"),
+        db.UniqueConstraint("number", "_trial_db_id"),
     )
 
 
@@ -486,8 +473,8 @@ class MeasureValue(AbstractConcreteBase, db.Model):
             try:
                 measure = Measure.query.get_by_id(measure, experiment_id)
             except NoResultFound:
-                raise NoResultFound("Cannot find target measure: "+measure)
-                
+                raise NoResultFound("Cannot find target measure: " + measure)
+
         self.measure = measure
         self.value = value
 

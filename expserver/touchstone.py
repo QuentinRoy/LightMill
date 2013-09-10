@@ -22,11 +22,12 @@ def _nonize_string(string):
 
 
 def _parse_experiment(dom):
+    measures = (_parse_measure(measure_dom) for measure_dom in dom.findall('measure'))
     exp = Experiment(id=dom.get('id'),
                      name=_nonize_string(dom.get('name')),
                      factors=[_parse_factor(factor_dom) for factor_dom in dom.findall('factor')],
                      author=dom.get('author'),
-                     measures=[_parse_measure(measure_dom) for measure_dom in dom.findall('measure')],
+                     measures=dict((measure.id, measure) for measure in measures),
                      description=_nonize_string(dom.get('description')))
     for run_dom in dom.findall('run'):
         _parse_run(run_dom, exp)
