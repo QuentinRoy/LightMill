@@ -361,3 +361,30 @@ def trial_info(trial):
         'total': trial.block.length(),
         'completion_date': trial.completion_date
     }
+
+
+@exp_api.route('/run/<experiment>/<run>/results')
+def trial_measure(experiment, run):
+    return render_template(
+        'results.html',
+        trials=[
+            {
+                'measures': _get_trial_measure(trial),
+                'number': trial.number,
+                'block_number': trial.block.number,
+                'measure_block_number': trial.block.measure_block_number(),
+                'practice': trial.block.practice
+            } for trial in run.trials.filter(Trial.completion_date != None)],
+        trial_measures=sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
+                              key=lambda x: x.id),
+        factors=sorted(experiment.factors, key=lambda x: x.id),
+        run=run,
+        experiment=experiment
+    )
+
+
+def _get_trial_measure(trial):
+    measure_values = dict()
+    for measure_value in trial.measure_values:
+        measure_values[measure_value.measure.id] = measure_value.value
+    return measure_values
