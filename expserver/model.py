@@ -68,8 +68,7 @@ class Experiment(db.Model):
 class Run(db.Model):
     class RunQuery(BaseQuery):
         def get_by_id(self, run_id, experiment_id):
-            return Run.query.filter(Run.id == run_id) \
-                .filter(Experiment.id == experiment_id).one()
+            return Run.query.join(Experiment).filter(Run.id == run_id).filter(Experiment.id == experiment_id).one()
 
     query_class = RunQuery
 
