@@ -294,7 +294,7 @@ class Trial(db.Model):
     def iter_all_factor_values(self):
         for value in self.factor_values:
             yield value
-        for value in self.block.values:
+        for value in self.block.factor_values:
             yield value
 
     def __init__(self, block, values, number=None):
@@ -363,7 +363,6 @@ class FactorValue(db.Model):
 
     id = db.Column(db.String(40), nullable=False)
     name = db.Column(db.String(200))
-    value = db.Column(db.Text)
 
     __table_args__ = (
         db.UniqueConstraint("id", "_factor_db_id"),
