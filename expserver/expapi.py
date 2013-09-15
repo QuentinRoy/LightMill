@@ -364,23 +364,27 @@ def trial_info(trial):
 
 
 @exp_api.route('/run/<experiment>/<run>/results')
-def trial_measure(experiment, run):
-    return render_template(
-        'results.html',
-        trials=[
-            {
-                'measures': _get_trial_measure(trial),
-                'number': trial.number,
-                'block_number': trial.block.number,
-                'measure_block_number': trial.block.measure_block_number(),
-                'practice': trial.block.practice
-            } for trial in run.trials.filter(Trial.completion_date != None)],
-        trial_measures=sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
-                              key=lambda x: x.id),
-        factors=sorted(experiment.factors, key=lambda x: x.id),
-        run=run,
-        experiment=experiment
-    )
+def run_results(experiment, run):
+    if 'nojs' in request.args:
+        return render_template(
+            'resultsstatic.html',
+            trials=[
+                {
+                    'measures': _get_trial_measure(trial),
+                    'number': trial.number,
+                    'block_number': trial.block.number,
+                    'measure_block_number': trial.block.measure_block_number(),
+                    'practice': trial.block.practice
+                } for trial in run.trials.filter(Trial.completion_date != None)],
+            trial_measures=sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
+                                  key=lambda x: x.id),
+            factors=sorted(experiment.factors, key=lambda x: x.id),
+            run=run,
+            experiment=experiment
+        )
+    else:
+        rend = render_template('resultswebsocket.html', run=run, experiment=experiment)
+        return rend
 
 
 def _get_trial_measure(trial):
