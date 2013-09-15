@@ -365,26 +365,57 @@ def trial_info(trial):
 
 @exp_api.route('/run/<experiment>/<run>/results')
 def run_results(experiment, run):
+    factors = sorted(experiment.factors, key=lambda x: x.id)
+    trial_measures = sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
+                            key=lambda x: x.id)
+
+    class ColumnPar:
+        def __init__(self):
+            self._par, self._last_par = "even", "odd"
+
+        def new_column(self):
+            self._par, self._last_par = self._last_par, self._par
+            return self._par
+
+        def new_row(self):
+            self.__init__()
+            return self._par
+
+
     if 'nojs' in request.args:
-        return render_template(
-            'resultsstatic.html',
-            trials=[
-                {
-                    'measures': _get_trial_measure(trial),
-                    'number': trial.number,
-                    'block_number': trial.block.number,
-                    'measure_block_number': trial.block.measure_block_number(),
-                    'practice': trial.block.practice
-                } for trial in run.trials.filter(Trial.completion_date != None)],
-            trial_measures=sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
-                                  key=lambda x: x.id),
-            factors=sorted(experiment.factors, key=lambda x: x.id),
-            run=run,
-            experiment=experiment
-        )
+        return render_template('results_static.html',
+                               trials=[
+                                   {
+                                       'measures': _get_trial_measure(trial),
+                                       'factors': dict((f_value.factor.id, f_value)
+                                                       for f_value in trial.iter_all_factor_values()),
+                                       'number': trial.number,
+                                       'block_number': trial.block.number,
+                                       'measure_block_number': trial.block.measure_block_number(),
+                                       'practice': trial.block.practice
+                                   } for trial in run.trials.filter(Trial.completion_date != None)],
+                               trial_measures=trial_measures,
+                               col_par=ColumnPar(),
+                               factors=factors,
+                               run=run,
+                               experiment=experiment)
     else:
-        rend = render_template('resultswebsocket.html', run=run, experiment=experiment)
-        return rend
+        return render_template('results_websocket.html',
+                               infos={
+                                   'factors': OrderedDict((factor.id, factor.name) for factor in factors),
+                                   'measures': OrderedDict((measure.id, measure.name) for measure in trial_measures),
+                                   'run_id': run.id,
+                                   'experiment_id': experiment.id
+                               },
+                               trial_measures=trial_measures,
+                               factors=factors,
+                               run=run,
+                               experiment=experiment)
+
+
+@exp_api.route('/run/<experiment>/<run>/results')
+def get_results(experiment, run):
+    pass
 
 
 def _get_trial_measure(trial):

@@ -20,16 +20,42 @@
 <body>
 {% block body %}
 
-<h1>Trial results of run {{ run.id }} of experiment '{{ experiment.name }}'</h1>
+    <h1>Trial results of run {{ run.id }} of experiment '{{ experiment.name }}'</h1>
 
-<div id="container">
-    {% block content %}
-        <table class="gridtable" id='trial-results' run='{{ run.id }}' experiment='{{ experiment.id }}'>
-            <thead>{% block table_head %}{% endblock %}</thead>
-            <tbody>{% block table_body %}{% endblock %}</tbody>
-        </table>
-    {% endblock %}
-</div>
+    <div id="container">
+        {% block content %}
+            <table class="gridtable" id='trial-results' run='{{ run.id }}' experiment='{{ experiment.id }}'>
+                <thead>
+                {% block table_head %}
+                    <tr id='trial-results-header' class='table-header'>
+                        <th class='column-block-num measure-name trial-id'>Block number</th>
+                        <th class='column-trial-num measure-name trial-id'>Trial number</th>
+                        {% for factor in factors %}
+                            <th class='column-{{ factor.id }}-factor' factor='{{ factor.id }}'>
+                                {% if factor.name != None %}
+                                    {{ factor.name }}
+                                {% else %}
+                                    {{ factor.id }}
+                                {% endif %}
+                            </th>
+                        {% endfor %}
+
+                        {% for measure in trial_measures %}
+                            <th class='column-{{ measure.id }}-measure' measure='{{ measure.id }}'>
+                                {% if measure.name != None %}
+                                    {{ measure.name }}
+                                {% else %}
+                                    {{ measure.id }}
+                                {% endif %}
+                            </th>
+                        {% endfor %}
+                    </tr>
+                {% endblock %}
+                </thead>
+                <tbody>{% block table_body %}{% endblock %}</tbody>
+            </table>
+        {% endblock %}
+    </div>
 
 {% endblock body %}
 </body>

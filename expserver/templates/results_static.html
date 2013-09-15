@@ -1,0 +1,39 @@
+{% extends "results.html" %}
+
+{% block table_body %}
+    {% for trial in trials %}
+        <tr id='trial-results-{{ trial.block_number }}-{{ trial.number }}' trial-number='{{ trial.number }}'
+            block-number='{{ trial.block_number }}'>
+
+            <th class='column-block-num trial-id {{ col_par.new_row() }}' column-type='info'>
+                {% if trial.measure_block_number != None %}
+                    {{ trial.measure_block_number }}
+                {% endif %}
+            </th>
+            <th class='column-trial-num trial-id {{ col_par.new_column() }}' column-type='info'>{{ trial.number }}</th>
+
+            {% for factor in factors %}
+                <td class='column-{{ factor.id }}-factor {{ col_par.new_column() }}' column-type='factor'
+                    factor='{{ factor.id }}'>
+                    {% if factor.id in trial.factors %}
+                        {% set factor_value = trial.factors[factor.id] %}
+                        {% if factor_value.name %}
+                            {{ factor_value.name }}
+                        {% else %}
+                            {{ factor_value.id }}
+                        {% endif %}
+                    {% endif %}
+                </td>
+            {% endfor %}
+
+            {% for measure in trial_measures %}
+                <td class='column-{{ measure.id }}-measure {{ col_par.new_column() }}' column-type='measure'
+                    measure='{{ measure.id }}'>
+                    {% if measure.id in trial.measures %}
+                        {{ trial.measures[measure.id] }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+{% endblock table_body %}
