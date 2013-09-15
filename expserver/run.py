@@ -1,11 +1,19 @@
 __author__ = 'Quentin Roy'
 
+
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask
 from expapi import exp_api
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
 import os
 import default_settings
+from geventwebsocket.handler import WebSocketHandler
+from gevent.pywsgi import WSGIServer
+from werkzeug import serving
+from werkzeug.debug import DebuggedApplication
 
 # app creation
 app = Flask(__name__.split('.')[0])
@@ -16,6 +24,7 @@ app.register_blueprint(exp_api)
 db.init_app(app)
 db.app = app
 db.create_all()
+
 
 def import_experiment(touchstone_file):
     expe_id = parse_experiment_id(touchstone_file)
@@ -31,9 +40,13 @@ if os.path.exists(default_settings.TOUCHSTONE_FILE):
     import_experiment(default_settings.TOUCHSTONE_FILE)
 
 
-def main():
-    app.run(host="0.0.0.0", debug=True)
+@serving.run_with_reloader
+def runServer():
+    app.debug = True
+    dapp = DebuggedApplication(app, evalex=True, show_hidden_frames=True)
+    http_server = WSGIServer(('', 5000), dapp, handler_class=WebSocketHandler)
+    http_server.serve_forever()
 
 
 if __name__ == '__main__':
-    main()
+    runServer()
