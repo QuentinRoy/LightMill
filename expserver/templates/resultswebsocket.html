@@ -1,0 +1,16 @@
+{% extends "results.html" %}
+
+{% block head %}
+    <noscript>
+        <meta http-equiv="refresh"
+              content="0;url={{ url_for('.run_results', experiment=experiment.id, run=run.id) }}?nojs"/>
+    </noscript>
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/results.js') }}"></script>
+{% endblock %}
+
+{% block style %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/resultswebsocket.css') }}">
+{% endblock %}

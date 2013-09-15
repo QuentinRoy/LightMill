@@ -1,0 +1,8 @@
+h1 {
+    position:fixed;
+}
+
+#container {
+    display: inline-block;
+    padding-top: 79px;
+}

@@ -1,0 +1,55 @@
+{% extends "results.html" %}
+
+{% block table_head %}
+    <tr id='trial-results-header' class='table-header'>
+        <th class='column-block-num measure-name trial-id'>Block number</th>
+        <th class='column-trial-num measure-name trial-id'>Trial number</th>
+        {% for factor in factors %}
+            <th class='column-{{ factor.id }}-factor' factor='{{ factor.id }}'>
+                {% if factor.name != None %}
+                    {{ factor.name }}
+                {% else %}
+                    {{ factor.id }}
+                {% endif %}
+            </th>
+        {% endfor %}
+
+        {% for measure in trial_measures %}
+            <th class='column-{{ measure.id }}-measure' measure='{{ measure.id }}'>
+                {% if measure.name != None %}
+                    {{ measure.name }}
+                {% else %}
+                    {{ measure.id }}
+                {% endif %}
+            </th>
+        {% endfor %}
+    </tr>
+{% endblock %}
+
+{% block table_body %}
+    {% for trial in trials %}
+        <tr id='trial-results-{{ trial.block_number }}-{{ trial.number }}' trial-number='{{ trial.number }}'
+            block-number='{{ trial.block_number }}'>
+
+            <th class='column-block-num trial-id'>
+                {% if trial.measure_block_number != None %}
+                    {{ trial.measure_block_number }}
+                {% endif %}
+            </th>
+            <th class='column-trial-num trial-id'>{{ trial.number }}</th>
+
+            {% for factor in factors %}
+                <td class='column-{{ factor.id }}-factor' factor='{{ factor.id }}'>
+                </td>
+            {% endfor %}
+
+            {% for measure in trial_measures %}
+                <td class='column-{{ measure.id }}-measure' measure='{{ measure.id }}'>
+                    {% if measure.id in trial.measures %}
+                        {{ trial.measures[measure.id] }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+{% endblock table_body %}
