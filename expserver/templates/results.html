@@ -23,29 +23,36 @@
     <h1>Trial results of run {{ run.id }} of experiment '{{ experiment.name }}'</h1>
 
     <div id="container">
-        {% block content %}
+        {% block content %}{% strip %}
             <table class="gridtable" id='trial-results' run='{{ run.id }}' experiment='{{ experiment.id }}'>
                 <thead>
-                {% block table_head %}
+                {%- block table_head -%}
+                    {% set cycle = cycler('odd', 'even') %}
                     <tr id='trial-results-header' class='table-header'>
-                        <th class='column-block-num measure-name trial-id'>Block number</th>
-                        <th class='column-trial-num measure-name trial-id'>Trial number</th>
+                        <th class='column-block-num {{ cycle.next() }}' column-type='info' info="block_number">
+                            Block number
+                        </th>
+                        <th class='column-trial-num {{ cycle.next() }}' column-type='info' info="trial_number">
+                            Trial number
+                        </th>
                         {% for factor in factors %}
-                            <th class='column-{{ factor.id }}-factor' factor='{{ factor.id }}'>
+                            <th class='column-{{ factor.id }}-factor {{ cycle.next() }}'
+                                column-type='factor' factor='{{ factor.id }}'>
                                 {% if factor.name != None %}
-                                    {{ factor.name }}
+                                    {{- factor.name -}}
                                 {% else %}
-                                    {{ factor.id }}
+                                    {{- factor.id -}}
                                 {% endif %}
                             </th>
                         {% endfor %}
 
                         {% for measure in trial_measures %}
-                            <th class='column-{{ measure.id }}-measure' measure='{{ measure.id }}'>
-                                {% if measure.name != None %}
-                                    {{ measure.name }}
-                                {% else %}
-                                    {{ measure.id }}
+                            <th class='column-{{ measure.id }}-measure {{ cycle.next() }}'
+                                column-type='measure' measure='{{ measure.id }}'>
+                                {%- if measure.name != None -%}
+                                    {{- measure.name -}}
+                                {%- else -%}
+                                    {{- measure.id -}}
                                 {% endif %}
                             </th>
                         {% endfor %}
@@ -54,7 +61,7 @@
                 </thead>
                 <tbody>{% block table_body %}{% endblock %}</tbody>
             </table>
-        {% endblock %}
+        {% endstrip %}{% endblock %}
     </div>
 
 {% endblock body %}

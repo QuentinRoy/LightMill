@@ -7,8 +7,6 @@ $(function () {
     }
 
     TrialResultsTable.prototype = {
-
-
         addRow: function (rowValues) {
 
         }

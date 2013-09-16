@@ -19,6 +19,7 @@ from werkzeug.debug import DebuggedApplication
 app = Flask(__name__.split('.')[0])
 app.config['SQLALCHEMY_DATABASE_URI'] = default_settings.SQLALCHEMY_DATABASE_URI
 app.register_blueprint(exp_api)
+app.jinja_env.add_extension("jinja2htmlcompress.SelectiveHTMLCompress")
 
 # database initialization
 db.init_app(app)

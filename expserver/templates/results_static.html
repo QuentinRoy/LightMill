@@ -1,33 +1,36 @@
 {% extends "results.html" %}
 
-{% block table_body %}
+{% block table_body %}{% strip %}
     {% for trial in trials %}
-        <tr id='trial-results-{{ trial.block_number }}-{{ trial.number }}' trial-number='{{ trial.number }}'
+        {% set cycle = cycler('odd', 'even') %}
+        <tr id="trial-results-{{ trial.block_number }}-{{ trial.number }}" trial-number='{{ trial.number }}'
             block-number='{{ trial.block_number }}'>
 
-            <th class='column-block-num trial-id {{ col_par.new_row() }}' column-type='info'>
+            <th class="column-block-num {{ ' ' + cycle.next() }}" column-type='info' info="block_number">
                 {% if trial.measure_block_number != None %}
                     {{ trial.measure_block_number }}
                 {% endif %}
             </th>
-            <th class='column-trial-num trial-id {{ col_par.new_column() }}' column-type='info'>{{ trial.number }}</th>
+            <th class="column-trial-num {{ ' ' +cycle.next() }}" column-type='info' info ="trial_number">
+                {{ trial.number }}
+            </th>
 
-            {% for factor in factors %}
-                <td class='column-{{ factor.id }}-factor {{ col_par.new_column() }}' column-type='factor'
+            {%- for factor in factors -%}
+                <td class="column-{{ factor.id }}-factor {{ ' ' +cycle.next() }}" column-type='factor'
                     factor='{{ factor.id }}'>
-                    {% if factor.id in trial.factors %}
+                    {%- if factor.id in trial.factors -%}
                         {% set factor_value = trial.factors[factor.id] %}
                         {% if factor_value.name %}
                             {{ factor_value.name }}
                         {% else %}
                             {{ factor_value.id }}
                         {% endif %}
-                    {% endif %}
+                    {%- endif -%}
                 </td>
-            {% endfor %}
+            {%- endfor -%}
 
             {% for measure in trial_measures %}
-                <td class='column-{{ measure.id }}-measure {{ col_par.new_column() }}' column-type='measure'
+                <td class="column-{{ measure.id }}-measure {{ ' '+cycle.next() }}" column-type='measure'
                     measure='{{ measure.id }}'>
                     {% if measure.id in trial.measures %}
                         {{ trial.measures[measure.id] }}
@@ -36,4 +39,4 @@
             {% endfor %}
         </tr>
     {% endfor %}
-{% endblock table_body %}
+{% endstrip %}{% endblock table_body %}

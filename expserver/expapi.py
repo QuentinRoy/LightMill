@@ -369,19 +369,6 @@ def run_results(experiment, run):
     trial_measures = sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
                             key=lambda x: x.id)
 
-    class ColumnPar:
-        def __init__(self):
-            self._par, self._last_par = "even", "odd"
-
-        def new_column(self):
-            self._par, self._last_par = self._last_par, self._par
-            return self._par
-
-        def new_row(self):
-            self.__init__()
-            return self._par
-
-
     if 'nojs' in request.args:
         return render_template('results_static.html',
                                trials=[
@@ -395,7 +382,6 @@ def run_results(experiment, run):
                                        'practice': trial.block.practice
                                    } for trial in run.trials.filter(Trial.completion_date != None)],
                                trial_measures=trial_measures,
-                               col_par=ColumnPar(),
                                factors=factors,
                                run=run,
                                experiment=experiment)
