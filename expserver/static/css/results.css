@@ -1,6 +1,15 @@
+html, body {
+    padding: 0;
+    margin: 0;
+}
+
+#title {
+    width: 100%;
+    text-align: center;
+}
+
 #container {
-    display: inline-block;
-    padding: 10px 10px 10px 10px;
+    margin: 0 0 -4px 0 ;
 }
 
 table.gridtable {
@@ -8,6 +17,7 @@ table.gridtable {
     font-size: 11px;
     color: #333333;
     border-color: #666666;
+    vertical-align: middle;
     border-collapse: collapse;
 }
 
@@ -17,7 +27,8 @@ table.gridtable tr[trial-number='0'] td, table.gridtable tr[trial-number='0'] th
 
 table.gridtable th[info] {
     background-color: #D7E1E1;
-    border-right-width: 1px;
+    border-width: 1px;
+    border-style: solid;
 }
 
 table.gridtable td[factor] {
@@ -29,11 +40,22 @@ table.gridtable [factor] + :not([factor]) {
 }
 
 table.gridtable th, table.gridtable tr.table-header th[info] {
-    border-width: 1px;
     padding: 8px;
-    border-style: solid;
-    border-color: #666666;
-    background-color: #dedede;
+    vertical-align: bottom;
+    border-style: none;
+    background-color: white;
+}
+
+table.gridtable tbody tr:hover td.odd {
+    background-color: #eefdff;
+}
+
+table.gridtable tbody tr:hover td.even {
+    background-color: #dff7fa;
+}
+
+table.gridtable tbody tr:hover th {
+    background-color: #c7dbe1;
 }
 
 table.gridtable [info] + :not([info]) {
@@ -62,23 +84,13 @@ table.gridtable :first-child > * {
 }
 
 table.gridtable :last-child > * {
-    border-bottom-width: 2px !important;
+    border-bottom-style: none !important;
 }
 
 table.gridtable * :first-child {
-    border-left-width: 2px !important;
+    border-left-style: none !important;
 }
 
 table.gridtable * :last-child {
-    border-right-width: 2px !important;
-}
-
-body, html {
-    margin: 0;
-    padding: 0;
-}
-
-h1 {
-    width: 100%;
-    text-align: center;
+    border-right-style: none !important;
 }

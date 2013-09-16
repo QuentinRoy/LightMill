@@ -1,17 +1,22 @@
-from collections import OrderedDict
-from sqlalchemy.exc import IntegrityError
+from threading import Lock
+import thread
+from geventwebsocket.exceptions import WebSocketError
 
 __author__ = 'Quentin Roy'
 
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import event
 import os
 import uuid
-from flask import jsonify, redirect, request, render_template
+from flask import jsonify, redirect, request, render_template, abort
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue
 from time import time
+from collections import OrderedDict
+from sqlalchemy.exc import IntegrityError
+import json
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
 
@@ -280,7 +285,7 @@ def run_current_trial(experiment, run):
         })
         response.status_code = 410
         return response
-    return jsonify(trial_info(trial))
+    return jsonify(_trial_info(trial))
 
 
 @exp_api.route('/block/<experiment>/<run>/<int:block>')
@@ -318,20 +323,22 @@ def trial_props(experiment, run, block, trial):
             response.status_code = 405
             return response
         measures = experiment.measures
-        for measure_id, measure_value in _convert_measures(data['measures']):
-            if measure_id != 'events':
-                trial.measure_values.append(TrialMeasureValue(measure_value, measures[measure_id]))
-        event_num = 0
-        for event_measures in data['measures']['events']:
-            values = []
-            for measure_id, measure_value in _convert_measures(event_measures):
-                values.append(EventMeasureValue(measure_value, measures[measure_id]))
-            Event(values, event_num, trial)
-            event_num += 1
-
-        trial.set_completed()
-        db.session.commit()
-    return jsonify(trial_info(trial))
+        try:
+            for measure_id, measure_value in _convert_measures(data['measures']):
+                if measure_id != 'events':
+                    trial.measure_values.append(TrialMeasureValue(measure_value, measures[measure_id]))
+            event_num = 0
+            for event_measures in data['measures']['events']:
+                values = []
+                for measure_id, measure_value in _convert_measures(event_measures):
+                    values.append(EventMeasureValue(measure_value, measures[measure_id]))
+                Event(values, event_num, trial)
+                event_num += 1
+            trial.set_completed()
+            db.session.commit()
+        except KeyError as ke:
+            raise UnknownElement('Invalid factor or value key: {}'.format(ke.args[0]))
+    return jsonify(_trial_info(trial))
 
 
 def _convert_measures(measures):
@@ -348,7 +355,7 @@ def _get_measures_paths(measures):
         yield [], measures
 
 
-def trial_info(trial):
+def _trial_info(trial):
     return {
         'number': trial.number,
         'block_number': trial.block.number,
@@ -372,26 +379,23 @@ def run_results(experiment, run):
     if 'nojs' in request.args:
         return render_template('results_static.html',
                                trials=[
-                                   {
-                                       'measures': _get_trial_measure(trial),
-                                       'factors': dict((f_value.factor.id, f_value)
-                                                       for f_value in trial.iter_all_factor_values()),
-                                       'number': trial.number,
-                                       'block_number': trial.block.number,
-                                       'measure_block_number': trial.block.measure_block_number(),
-                                       'practice': trial.block.practice
-                                   } for trial in run.trials.filter(Trial.completion_date != None)],
+                                   _get_trial_measure_info(trial)
+                                   for trial in run.trials.filter(Trial.completion_date != None)
+                               ],
                                trial_measures=trial_measures,
                                factors=factors,
                                run=run,
                                experiment=experiment)
     else:
         return render_template('results_websocket.html',
-                               infos={
+                               config={
                                    'factors': OrderedDict((factor.id, factor.name) for factor in factors),
                                    'measures': OrderedDict((measure.id, measure.name) for measure in trial_measures),
                                    'run_id': run.id,
-                                   'experiment_id': experiment.id
+                                   'experiment_id': experiment.id,
+                                   'websocket_url': url_for('exp_api.result_socket',
+                                                            experiment=experiment.id,
+                                                            run=run.id)
                                },
                                trial_measures=trial_measures,
                                factors=factors,
@@ -399,9 +403,83 @@ def run_results(experiment, run):
                                experiment=experiment)
 
 
-@exp_api.route('/run/<experiment>/<run>/results')
-def get_results(experiment, run):
-    pass
+@exp_api.route('/run/<experiment>/<run>/result_socket')
+def result_socket(experiment, run):
+    if request.environ.get('wsgi.websocket'):
+
+        ws = request.environ['wsgi.websocket']
+
+        def send_trial(trial):
+            trial_info = _get_trial_measure_info(trial)
+
+            # convert the factors
+            factors = trial_info['factors']
+            for factor_id in factors:
+                factors[factor_id] = factors[factor_id].id
+
+            print('WebSocket send')
+            message = json.dumps(trial_info)
+            ws.send(message)
+
+        lock = Lock()
+
+        def listener(mapper, connection, target):
+            if target.run.id == run.id and target.experiment.id == experiment.id and target.completed:
+                def _sen():
+                    lock.acquire()
+                    trial = Trial.query.get_by_number(target.number, target.block.number, run.id, experiment.id)
+                    send_trial(trial)
+                    lock.release()
+
+                thread.start_new_thread(_sen)
+
+        for trial in run.trials.filter(Trial.completion_date != None):
+            send_trial(trial)
+
+        listener_id = event.listen(Trial, 'after_update', listener)
+
+        while True:
+            try:
+                print ("Wait msg")
+                message = ws.receive()
+                # we don't care about what you're saying.
+                if message is None:
+                    break
+            except WebSocketError:
+                break
+            finally:
+                event.remove(Trial, listener_id, listener)
+                break
+        return ''
+    else:
+        abort(400, "Expected WebSocket request")
+
+
+@exp_api.route('/test')
+def test():
+    return render_template('websock_test.html')
+
+
+@exp_api.route('/api')
+def api():
+    if request.environ.get('wsgi.websocket'):
+        ws = request.environ['wsgi.websocket']
+        while True:
+            message = ws.receive()
+            ws.send(message)
+    return
+
+
+def _get_trial_measure_info(trial):
+    return {
+        'measures': _get_trial_measure(trial),
+        'factors': dict((f_value.factor.id, f_value)
+                        for f_value in trial.iter_all_factor_values()),
+        'number': trial.number,
+        'block_number': trial.block.number,
+        'measure_block_number': trial.block.measure_block_number(),
+        'practice': trial.block.practice
+    }
 
 
 def _get_trial_measure(trial):

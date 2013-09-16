@@ -13,7 +13,6 @@ import default_settings
 from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
 from werkzeug import serving
-from werkzeug.debug import DebuggedApplication
 
 # app creation
 app = Flask(__name__.split('.')[0])
@@ -44,8 +43,7 @@ if os.path.exists(default_settings.TOUCHSTONE_FILE):
 @serving.run_with_reloader
 def runServer():
     app.debug = True
-    dapp = DebuggedApplication(app, evalex=True, show_hidden_frames=True)
-    http_server = WSGIServer(('', 5000), dapp, handler_class=WebSocketHandler)
+    http_server = WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
     http_server.serve_forever()
 
 

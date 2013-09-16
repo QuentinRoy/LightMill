@@ -20,7 +20,7 @@
 <body>
 {% block body %}
 
-    <h1>Trial results of run {{ run.id }} of experiment '{{ experiment.name }}'</h1>
+    <h1 id='title'>Trial results of run {{ run.id }} of experiment '{{ experiment.name }}'</h1>
 
     <div id="container">
         {% block content %}{% strip %}
@@ -29,14 +29,15 @@
                 {%- block table_head -%}
                     {% set cycle = cycler('odd', 'even') %}
                     <tr id='trial-results-header' class='table-header'>
-                        <th class='column-block-num {{ cycle.next() }}' column-type='info' info="block_number">
+                        <th class='column-block-num {{ ' ' + cycle.next() }}' column-type='info' info="block_number">
                             Block number
                         </th>
-                        <th class='column-trial-num {{ cycle.next() }}' column-type='info' info="trial_number">
+                        <th class='column-trial-num {{ ' ' + cycle.next() }}' column-type='info' info="trial_number">
                             Trial number
                         </th>
                         {% for factor in factors %}
-                            <th class='column-{{ factor.id }}-factor {{ cycle.next() }}'
+                            <th title='factor id: {{ ' ' + factor.id }}'
+                                class='column-{{ factor.id }}-factor {{ ' ' + cycle.next() }}'
                                 column-type='factor' factor='{{ factor.id }}'>
                                 {% if factor.name != None %}
                                     {{- factor.name -}}
@@ -47,8 +48,9 @@
                         {% endfor %}
 
                         {% for measure in trial_measures %}
-                            <th class='column-{{ measure.id }}-measure {{ cycle.next() }}'
-                                column-type='measure' measure='{{ measure.id }}'>
+                            <th class='column-{{ measure.id }}-measure {{ ' ' + cycle.next() }}'
+                                column-type='measure' measure='{{ measure.id }}'
+                                title='measure id: {{ ' '+ measure.id }}'>
                                 {%- if measure.name != None -%}
                                     {{- measure.name -}}
                                 {%- else -%}

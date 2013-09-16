@@ -1,8 +1,23 @@
-h1 {
+#title {
     position:fixed;
+    top:0;
+    padding-top:20px;
+    padding-bottom:20px;
+    margin-top:0px;
+    background-color: white;
 }
 
 #container {
     display: inline-block;
     padding-top: 79px;
+}
+
+#message {
+    margin-top:-35px;
+    display:none;
+    color: red;
+    font-weight: bold;
+    text-align: center;
+    position:fixed;
+    width:100%;
 }
