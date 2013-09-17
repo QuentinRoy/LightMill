@@ -1,10 +1,10 @@
 $(function () {
 
-    function realScroll(scroll){
+    function realScroll(scroll) {
         scroll = scroll || $(window).scrollTop();
-        if(scroll < 0) return 0;
-        var maxScroll = $(document).height()-$(window).height();
-        if(scroll > maxScroll) return maxScroll;
+        if (scroll < 0) return 0;
+        var maxScroll = $(document).height() - $(window).height();
+        if (scroll > maxScroll) return maxScroll;
         return scroll;
     }
 
@@ -86,31 +86,39 @@ $(function () {
             return newRow;
         },
 
-        _adjustHeaderWidths: function () {
+        _adjustHeaders: function () {
             var th, thi, cellSpacer, fixedTh,
                 tHead = this._table.find('thead'),
                 ths = tHead.find('th'),
                 fixedThs = this._fixedHeader.find('th'),
-                thWidth;
+                thWidth, tick, gap, tickPosition;
             for (thi = 0; thi < ths.length; thi++) {
                 th = $(ths[thi]);
                 fixedTh = $(fixedThs[thi]);
                 thWidth = th.outerWidth();
-                cellSpacer = $(fixedThs[thi]).find('.cell-spacer');
+                // adjust width
+                cellSpacer = fixedTh.find('.cell-spacer');
                 cellSpacer.width(fixedTh.outerWidth());
-                var gap = fixedTh.outerWidth() - thWidth;
+                gap = fixedTh.outerWidth() - thWidth;
                 cellSpacer.width(cellSpacer.width() - gap);
+                // adjust tick
+                tick = fixedTh.find('.tick');
+                tickPosition = tick.position();
+                gap = thWidth - tickPosition.left - Math.floor(parseInt(tick.css('width')) / 2);
+                tick.css({
+                    left: fixedTh.offset().left + tickPosition.left + gap
+                });
             }
         },
 
         _cloneHeader: function () {
             var tHead = this._table.find('thead'),
                 newTHead = tHead.clone(),
-                newTable = $('<table class="gridtable fixedheader" ></table>'),
+                newTable = $('<table class="gridtable fixed-header" ></table>'),
                 tHeadOffset = tHead.offset(),
                 newCols = newTHead.find('th,td'),
                 cols = tHead.find('th,td'),
-                colNum, col, newCol, cellSpacer;
+                colNum, col, newCol, nextCol, cellSpacer, tick;
             $('body').append(newTable);
             newTable.append(newTHead);
             newTHead.css({
@@ -121,9 +129,15 @@ $(function () {
 
             // append the spacers to the columns
             for (colNum = 0; colNum < cols.length; colNum++) {
-                newCol = $(newCols[colNum]);
+                newCol = nextCol || $(newCols[colNum]);
+                nextCol = $(newCols[colNum + 1]);
                 col = $(cols[colNum]);
                 cellSpacer = $('<div class="cell-spacer"></div>');
+                tick = $('<div class="tick"></div>');
+                if(nextCol && newCol.attr('column-type')!=nextCol.attr('column-type')){
+                    tick.css('width', 2);
+                }
+                newCol.append(tick);
                 newCol.prepend(cellSpacer);
             }
 
@@ -134,17 +148,28 @@ $(function () {
             });
             this._fixedHeader = newTable;
 
-            this._adjustHeaderWidths()
+            this._adjustHeaders()
 
+            newTable.addClass('shadowed')
             var initTop = parseInt(newTable.css('top')),
-                container = $("#container");
+                container = $("#container"),
+                shadowMax = parseFloat(newTable.css('box-shadow').match(/[^,]+(?=\))/)[0]),
+                shadowDist = 1;
+            newTable.removeClass('shadowed');
             $(window).scroll(function () {
-
                 var scroll = realScroll(),
                     left = newTable.offset().left,
-                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
+                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left,
+                    top = Math.min(initTop - scroll, initTop),
+                    shadowFactor;
                 newTable.css('left', newLeft);
-                newTable.css('top', Math.min(Math.max(initTop - scroll, 0), initTop));
+                newTable.css('top', Math.max(top, 0));
+                newTable.addClass('shadowed')
+                shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - top - shadowDist)) / shadowDist;
+                var shadowCss = newTable.css('box-shadow'),
+                    newShadowCss = shadowCss.replace(/[^,]+(?=\))/, shadowMax * shadowFactor);
+                newTable.css('box-shadow', newShadowCss);
+                if (shadowFactor == 0) newTable.removeClass('shadowed');
             });
         },
 
@@ -172,7 +197,7 @@ $(function () {
                 }
 
             }
-            if (this._table.width() != tableWidth) this._adjustHeaderWidths();
+            if (this._table.width() != tableWidth) this._adjustHeaders();
 
         }
     };
@@ -181,17 +206,19 @@ $(function () {
         wsAddr = "ws://" + location.hostname + (location.port ? ':' + location.port : '') + CONFIG.websocket_url,
         ws = new WebSocket(wsAddr),
         bottomDiv = $('#bottom'),
-        animBottom = false;
+        animBottom = false,
+        endline = $('#endline'),
+        endlineHeight = endline.height();
 
     ws.onopen = function () {
         console.log("Socket opened.");
     };
     ws.onmessage = function (msg) {
-        var onbottom = bottomDiv.is(':appeared') || animBottom;
         console.log(msg);
         var row = JSON.parse(msg.data);
         trt.addRow(row);
-        if (onbottom) {
+
+        if (bottomDiv.is(':appeared') || animBottom) {
             animBottom = true
             $('html, body').stop(true, true);
             $('html, body').animate({
@@ -201,6 +228,11 @@ $(function () {
                     animBottom = false;
                 }
             });
+        }
+
+        endline.height(Math.max(endlineHeight, Math.min(0, $(window).height()-$('body').height())));
+        if($(window).height() < $('body').height() - endline.height()){
+            endline.hide(0);
         }
     };
 
