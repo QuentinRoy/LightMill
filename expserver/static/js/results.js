@@ -56,10 +56,7 @@ $(function () {
             this._addEvenOdd(newCol, headerCol);
             newCol.attr('column-type', type);
             newCol.attr(type, tId);
-            if (tId == 'mode') newCol.html('djkqldfjdqklv kqsl,fkdsq,flkeza')
-            else
-                newCol.html(tvName);
-            return newCol;
+            newCol.html(tvName);
         },
 
         _createFactorCell: function (headerCol, rowValues) {
