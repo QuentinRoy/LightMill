@@ -1,5 +1,13 @@
 $(function () {
 
+    function realScroll(scroll){
+        scroll = scroll || $(window).scrollTop();
+        if(scroll < 0) return 0;
+        var maxScroll = $(document).height()-$(window).height();
+        if(scroll > maxScroll) return maxScroll;
+        return scroll;
+    }
+
     function isSet(obj) {
         return obj != null && typeof obj != 'undefined';
     }
@@ -80,7 +88,8 @@ $(function () {
 
         _adjustHeaderWidths: function () {
             var th, thi, cellSpacer, fixedTh,
-                ths = this._table.find('thead').find('th'),
+                tHead = this._table.find('thead'),
+                ths = tHead.find('th'),
                 fixedThs = this._fixedHeader.find('th'),
                 thWidth;
             for (thi = 0; thi < ths.length; thi++) {
@@ -114,16 +123,14 @@ $(function () {
             for (colNum = 0; colNum < cols.length; colNum++) {
                 newCol = $(newCols[colNum]);
                 col = $(cols[colNum]);
-                // newCol.css('border', 'none');
                 cellSpacer = $('<div class="cell-spacer"></div>');
                 newCol.prepend(cellSpacer);
             }
 
             newTable.css({
                 position: 'fixed',
-                top: tHeadOffset.top - 2, // -1 for the spacer height
+                top: tHeadOffset.top - 1, // -1 for the spacer height
                 left: tHeadOffset.left
-                // display: 'none'
             });
             this._fixedHeader = newTable;
 
@@ -132,14 +139,12 @@ $(function () {
             var initTop = parseInt(newTable.css('top')),
                 container = $("#container");
             $(window).scroll(function () {
-                if (container.height() > $(window).height()) {
-                    var left = newTable.offset().left,
-                        newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
-                    newTable.css({
-                        left: newLeft,
-                        top: Math.min(Math.max(initTop - $(window).scrollTop(), 0), initTop)
-                    });
-                }
+
+                var scroll = realScroll(),
+                    left = newTable.offset().left,
+                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
+                newTable.css('left', newLeft);
+                newTable.css('top', Math.min(Math.max(initTop - scroll, 0), initTop));
             });
         },
 
@@ -204,20 +209,19 @@ $(function () {
     });
 
     ws.onerror = ws.onclose = function (err) {
-        $('#message').html('(disconnected)');
-        $('#container').animate({
-            'padding-top': 99
-        }, 'fast');
-        $('#title').animate({
-            'padding-bottom': 40
-        }, 'fast');
-        $('#message').show();
+        // TODO: fix that
+//        $('#message').html('(disconnected)');
+//        $('#container').animate({
+//            'padding-top': 99
+//        }, 'fast');
+//        $('#title').animate({
+//            'padding-bottom': 40
+//        }, 'fast');
+//        $('#message').show();
     };
-    var container = $('#container');
+
     $(window).scroll(function () {
-        if (container.height() > $(window).height()) {
-            var scroll = Math.max(0, $(window).scrollTop());
-            $('#title').css('top', -scroll);
-        }
+        var scroll = realScroll();
+        $('#title').css('top', -scroll);
     })
 });
