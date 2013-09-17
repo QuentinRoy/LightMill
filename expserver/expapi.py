@@ -1,13 +1,8 @@
-from threading import Lock
-import thread
-from geventwebsocket.exceptions import WebSocketError
-
 __author__ = 'Quentin Roy'
 
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import event
 import os
 import uuid
 from flask import jsonify, redirect, request, render_template, abort
@@ -17,6 +12,10 @@ from time import time
 from collections import OrderedDict
 from sqlalchemy.exc import IntegrityError
 import json
+import thread
+from threading import Lock
+from sqlalchemy import event
+from geventwebsocket.exceptions import WebSocketError
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
 
@@ -403,6 +402,40 @@ def run_results(experiment, run):
                                experiment=experiment)
 
 
+class _TrialCompletedAlert():
+    def __init__(self):
+        self._listeners = {}
+        self._lock = Lock()
+
+        event.listen(Trial.completion_date, 'set', self._listen)
+
+    def _listen(self, target, value, oldvalue, initiator):
+        exp_id, run_id = target.experiment.id, target.run.id
+        if not exp_id in self._listeners or not run_id in self._listeners[exp_id]:
+            return
+        listeners = self._listeners[target.experiment.id][target.run.id]
+        if listeners and value is not None:
+            thread.start_new_thread(self._call_trial_completed_listeners,
+                                    [listeners, target.number, target.block.number])
+
+    def _call_trial_completed_listeners(self, listeners, trial_number, block_number):
+        with self._lock:
+            for listener in listeners:
+                listener(trial_number, block_number)
+
+    def append_listener(self, listener, experiment_id, run_id):
+        if not experiment_id in self._listeners:
+            self._listeners[experiment_id] = {}
+        if not run_id in self._listeners[experiment_id]:
+            self._listeners[experiment_id][run_id] = []
+        self._listeners[experiment_id][run_id].append(listener)
+
+    def remove_listener(self, listener, experiment_id, run_id):
+        self._listeners[experiment_id][run_id].remove(listener)
+
+
+_trial_completed_alert = _TrialCompletedAlert()
+
 @exp_api.route('/run/<experiment>/<run>/result_socket')
 def result_socket(experiment, run):
     if request.environ.get('wsgi.websocket'):
@@ -421,22 +454,14 @@ def result_socket(experiment, run):
             message = json.dumps(trial_info)
             ws.send(message)
 
-        lock = Lock()
-
-        def listener(mapper, connection, target):
-            if target.run.id == run.id and target.experiment.id == experiment.id and target.completed:
-                def _sen():
-                    lock.acquire()
-                    trial = Trial.query.get_by_number(target.number, target.block.number, run.id, experiment.id)
-                    send_trial(trial)
-                    lock.release()
-
-                thread.start_new_thread(_sen)
+        def listener(trial_number, block_number):
+            trial = Trial.query.get_by_number(trial_number, block_number, run.id, experiment.id)
+            send_trial(trial)
 
         for trial in run.trials.filter(Trial.completion_date != None):
             send_trial(trial)
 
-        listener_id = event.listen(Trial, 'after_update', listener)
+        _trial_completed_alert.append_listener(listener, experiment.id, run.id)
 
         while True:
             try:
@@ -447,8 +472,7 @@ def result_socket(experiment, run):
             except WebSocketError:
                 break
             finally:
-                event.remove(Trial, listener_id, listener)
-                break
+                _trial_completed_alert.remove_listener(listener, experiment.id, run.id)
         return ''
     else:
         abort(400, "Expected WebSocket request")
