@@ -57,6 +57,7 @@ $(function () {
             newCol.attr('column-type', type);
             newCol.attr(type, tId);
             newCol.html(tvName);
+            return newCol;
         },
 
         _createFactorCell: function (headerCol, rowValues) {
@@ -124,13 +125,11 @@ $(function () {
                 left: tHeadOffset.left
                 // display: 'none'
             });
-            this._fixedHeaderInitLeft = tHeadOffset.left;
             this._fixedHeader = newTable;
 
             this._adjustHeaderWidths()
 
-            var that = this,
-                initTop=parseInt(newTable.css('top'));
+            var initTop = parseInt(newTable.css('top'));
             $(window).scroll(function () {
                 var left = newTable.offset().left,
                     newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
@@ -166,6 +165,7 @@ $(function () {
 
             }
             if (this._table.width() != tableWidth) this._adjustHeaderWidths();
+
         }
     };
 
@@ -211,8 +211,8 @@ $(function () {
         $('#message').show();
     };
 
-    $(window).scroll(function(){
+    $(window).scroll(function () {
         var scroll = Math.max(0, $(window).scrollTop());
-        $('#title').css('top', - scroll);
+        $('#title').css('top', -scroll);
     })
 });
