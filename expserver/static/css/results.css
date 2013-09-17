@@ -6,12 +6,22 @@ html, body {
 #title {
     width: 100%;
     text-align: center;
+    z-index:2;
+    background-color: white;
 }
 
 #container {
     position:relative;
     padding:0;
     margin: 0 0 -4px 0 ;
+}
+
+#container #endline {
+    position:absolute;
+    background-color: #666666;
+    height:2px;
+    width:100%;
+    bottom:-2px;
 }
 
 table.gridtable {
@@ -21,12 +31,9 @@ table.gridtable {
     border-color: #666666;
     vertical-align: middle;
     border-collapse: collapse;
-    margin-bottom:-2px;
 }
 
 table.gridtable tbody {
-    border-bottom-style:solid;
-    border-bottom-width:2px;
 }
 
 table.gridtable th[info] {
@@ -91,18 +98,14 @@ table.gridtable tr.even td.even {
     background-color: rgba(108, 176, 176, 0.2);
 }
 
-table.gridtable :first-child > * {
-    border-top-width: 2px !important;
+table.gridtable tbody :last-child > * {
+    border-bottom-style: none;
 }
 
-table.gridtable :last-child > * {
-    border-bottom-style: none !important;
+table.gridtable tr :first-child {
+    border-left-style: none;
 }
 
-table.gridtable * :first-child {
-    border-left-style: none !important;
-}
-
-table.gridtable * :last-child {
-    border-right-style: none !important;
+table.gridtable tr :last-child {
+    border-right-style: none;
 }
