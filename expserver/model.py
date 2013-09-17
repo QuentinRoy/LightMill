@@ -474,7 +474,8 @@ class MeasureValue(AbstractConcreteBase, db.Model):
                 raise NoResultFound("Cannot find target measure: " + measure)
 
         self.measure = measure
-        self.value = value
+        # convert boolean into string repr
+        self.value = {True: 'true', False: 'false'}.get(value, value)
 
     def __repr__(self):
         return "<{} of {} (value: '{}')>".format(self.__class__.__name__,
