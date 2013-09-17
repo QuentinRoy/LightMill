@@ -10,10 +10,12 @@ $(function () {
     }
 
 
-    function TrialResultsTable(table, factors, measures) {
+    function TrialResultsTable(table) {
         this._table = $(table);
-        this._factors = factors;
-        this._measures = measures;
+
+        this._fixedHeader = null;
+
+        this._cloneHeader();
     }
 
     TrialResultsTable.prototype = {
@@ -54,8 +56,9 @@ $(function () {
             this._addEvenOdd(newCol, headerCol);
             newCol.attr('column-type', type);
             newCol.attr(type, tId);
-
-            newCol.html(tvName);
+            if (tId == 'mode') newCol.html('djkqldfjdqklv kqsl,fkdsq,flkeza')
+            else
+                newCol.html(tvName);
             return newCol;
         },
 
@@ -77,13 +80,78 @@ $(function () {
             return newRow;
         },
 
+        _adjustHeaderWidths: function () {
+            var th, thi, cellSpacer, fixedTh,
+                ths = this._table.find('thead').find('th'),
+                fixedThs = this._fixedHeader.find('th'),
+                thWidth;
+            for (thi = 0; thi < ths.length; thi++) {
+                th = $(ths[thi]);
+                fixedTh = $(fixedThs[thi]);
+                thWidth = th.outerWidth();
+                cellSpacer = $(fixedThs[thi]).find('.cell-spacer');
+                cellSpacer.width(fixedTh.outerWidth());
+                var gap = fixedTh.outerWidth() - thWidth;
+                cellSpacer.width(cellSpacer.width() - gap);
+            }
+        },
+
+        _cloneHeader: function () {
+            var tHead = this._table.find('thead'),
+                newTHead = tHead.clone(),
+                newTable = $('<table class="gridtable fixedheader" ></table>'),
+                tHeadOffset = tHead.offset(),
+                newCols = newTHead.find('th,td'),
+                cols = tHead.find('th,td'),
+                colNum, col, newCol, cellSpacer;
+            $('body').append(newTable);
+            newTable.append(newTHead);
+            newTHead.css({
+                'border-bottom-style': 'solid',
+                'border-bottom-width': 2,
+                'border-color': this._table.css('border-color')
+            });
+
+            // append the spacers to the columns
+            for (colNum = 0; colNum < cols.length; colNum++) {
+                newCol = $(newCols[colNum]);
+                col = $(cols[colNum]);
+                // newCol.css('border', 'none');
+                cellSpacer = $('<div class="cell-spacer"></div>');
+                newCol.prepend(cellSpacer);
+            }
+
+            newTable.css({
+                position: 'fixed',
+                top: tHeadOffset.top - 2, // -1 for the spacer height
+                left: tHeadOffset.left
+                // display: 'none'
+            });
+            this._fixedHeaderInitLeft = tHeadOffset.left;
+            this._fixedHeader = newTable;
+
+            this._adjustHeaderWidths()
+
+            var that = this,
+                initTop=parseInt(newTable.css('top'));
+            $(window).scroll(function () {
+                var left = newTable.offset().left,
+                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
+                newTable.css({
+                    left: newLeft,
+                    top: Math.min(Math.max(initTop - $(window).scrollTop(), 0), initTop)
+                });
+            });
+        },
+
         addRow: function (rowValues) {
             var col, colNum, newCol,
                 tr = this._table.find("#trial-results-header"),
                 cols = tr.find("th"),
                 colCount = cols.length,
                 tBody = this._table.find("tbody"),
-                newRow = this._createNewRow(rowValues);
+                newRow = this._createNewRow(rowValues),
+                tableWidth = this._table.width();
             newRow.appendTo(tBody);
             for (colNum = 0; colNum < colCount; colNum++) {
                 col = $(cols[colNum]);
@@ -100,11 +168,11 @@ $(function () {
                 }
 
             }
-
+            if (this._table.width() != tableWidth) this._adjustHeaderWidths();
         }
     };
 
-    var trt = new TrialResultsTable($('#trial-results'), CONFIG.factors, CONFIG.measures),
+    var trt = new TrialResultsTable($('#trial-results')),
         wsAddr = "ws://" + location.hostname + (location.port ? ':' + location.port : '') + CONFIG.websocket_url,
         ws = new WebSocket(wsAddr),
         bottomDiv = $('#bottom'),
@@ -145,4 +213,9 @@ $(function () {
         }, 'fast');
         $('#message').show();
     };
+
+    $(window).scroll(function(){
+        var scroll = Math.max(0, $(window).scrollTop());
+        $('#title').css('top', - scroll);
+    })
 });

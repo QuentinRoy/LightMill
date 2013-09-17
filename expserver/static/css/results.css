@@ -21,29 +21,33 @@ table.gridtable {
     border-collapse: collapse;
 }
 
-table.gridtable tr[trial-number='0'] td, table.gridtable tr[trial-number='0'] th {
-    border-top-width: 2px;
-}
-
 table.gridtable th[info] {
     background-color: #D7E1E1;
+    border-color: #666666;
     border-width: 1px;
     border-style: solid;
+}
+
+
+table.gridtable thead th, table.gridtable thead th[info]{
+    padding: 8px;
+    vertical-align: bottom;
+    border-color: #666666;
+    border-width:1px;
+    border-style:none;
+    background-color: white;
 }
 
 table.gridtable td[factor] {
     border-right-width: 1px;
 }
 
-table.gridtable [factor] + :not([factor]) {
-    border-left-width: 2px;
+table.gridtable tr[trial-number='0'] td, table.gridtable tr[trial-number='0'] th {
+    border-top-width: 2px;
 }
 
-table.gridtable th, table.gridtable tr.table-header th[info] {
-    padding: 8px;
-    vertical-align: bottom;
-    border-style: none;
-    background-color: white;
+table.gridtable [factor] + :not([factor]) {
+    border-left-width: 2px;
 }
 
 table.gridtable tbody tr:hover td.odd {

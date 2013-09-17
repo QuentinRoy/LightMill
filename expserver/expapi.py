@@ -440,7 +440,6 @@ def result_socket(experiment, run):
 
         while True:
             try:
-                print ("Wait msg")
                 message = ws.receive()
                 # we don't care about what you're saying.
                 if message is None:
