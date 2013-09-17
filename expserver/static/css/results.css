@@ -9,6 +9,8 @@ html, body {
 }
 
 #container {
+    position:relative;
+    padding:0;
     margin: 0 0 -4px 0 ;
 }
 
@@ -19,6 +21,12 @@ table.gridtable {
     border-color: #666666;
     vertical-align: middle;
     border-collapse: collapse;
+    margin-bottom:-2px;
+}
+
+table.gridtable tbody {
+    border-bottom-style:solid;
+    border-bottom-width:2px;
 }
 
 table.gridtable th[info] {

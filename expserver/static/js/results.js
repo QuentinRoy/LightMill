@@ -129,14 +129,17 @@ $(function () {
 
             this._adjustHeaderWidths()
 
-            var initTop = parseInt(newTable.css('top'));
+            var initTop = parseInt(newTable.css('top')),
+                container = $("#container");
             $(window).scroll(function () {
-                var left = newTable.offset().left,
-                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
-                newTable.css({
-                    left: newLeft,
-                    top: Math.min(Math.max(initTop - $(window).scrollTop(), 0), initTop)
-                });
+                if (container.height() > $(window).height()) {
+                    var left = newTable.offset().left,
+                        newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
+                    newTable.css({
+                        left: newLeft,
+                        top: Math.min(Math.max(initTop - $(window).scrollTop(), 0), initTop)
+                    });
+                }
             });
         },
 
@@ -210,9 +213,11 @@ $(function () {
         }, 'fast');
         $('#message').show();
     };
-
+    var container = $('#container');
     $(window).scroll(function () {
-        var scroll = Math.max(0, $(window).scrollTop());
-        $('#title').css('top', -scroll);
+        if (container.height() > $(window).height()) {
+            var scroll = Math.max(0, $(window).scrollTop());
+            $('#title').css('top', -scroll);
+        }
     })
 });
