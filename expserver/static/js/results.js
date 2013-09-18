@@ -95,21 +95,25 @@ $(function () {
             for (thi = 0; thi < ths.length; thi++) {
                 th = $(ths[thi]);
                 fixedTh = $(fixedThs[thi]);
-                thWidth = th.outerWidth();
+                thWidth = th.width();
                 // adjust width
-                cellSpacer = fixedTh.find('.cell-spacer');
-                cellSpacer.width(fixedTh.outerWidth());
-                gap = fixedTh.outerWidth() - thWidth;
-                cellSpacer.width(cellSpacer.width() - gap);
+                fixedTh.css({
+                    'min-width': thWidth,
+                    'max-width': thWidth,
+                    'width': thWidth
+                });
                 // adjust tick
                 tick = fixedTh.find('.tick');
-                tickPosition = tick.position();
-                gap = thWidth - tickPosition.left - Math.floor(parseInt(tick.css('width')) / 2);
-                tick.css({
-                    left: fixedTh.offset().left + tickPosition.left + gap
-                });
+                if (tick.length > 0) {
+                    tickPosition = tick.position();
+                    gap = th.outerWidth() - tickPosition.left - Math.floor(parseInt(tick.css('width')) / 2);
+                    tick.css({
+                        left: fixedTh.offset().left + tickPosition.left + gap
+                    });
+                }
             }
         },
+
 
         _cloneHeader: function () {
             var tHead = this._table.find('thead'),
@@ -121,10 +125,18 @@ $(function () {
                 colNum, col, newCol, nextCol, cellSpacer, tick;
             $('body').append(newTable);
             newTable.append(newTHead);
+
+            newTable.css({
+                // position: 'fixed', // already in the CSS
+                top: tHeadOffset.top, // -1 for the spacer height
+                left: tHeadOffset.left
+            });
+
             newTHead.css({
                 'border-bottom-style': 'solid',
                 'border-bottom-width': 2,
-                'border-color': this._table.css('border-color')
+                'border-color': this._table.css('border-color'),
+                'width': this._table.outerWidth()
             });
 
             // append the spacers to the columns
@@ -132,20 +144,16 @@ $(function () {
                 newCol = nextCol || $(newCols[colNum]);
                 nextCol = $(newCols[colNum + 1]);
                 col = $(cols[colNum]);
-                cellSpacer = $('<div class="cell-spacer"></div>');
-                tick = $('<div class="tick"></div>');
-                if(nextCol && newCol.attr('column-type')!=nextCol.attr('column-type')){
-                    tick.css('width', 2);
+                // add the tick
+                if (nextCol.length > 0) {
+                    tick = $('<div class="tick"></div>');
+                    if (newCol.attr('column-type') != nextCol.attr('column-type')) {
+                        tick.css('width', 2);
+                    }
+                    newCol.append(tick);
                 }
-                newCol.append(tick);
-                newCol.prepend(cellSpacer);
             }
 
-            newTable.css({
-                position: 'fixed',
-                top: tHeadOffset.top - 1, // -1 for the spacer height
-                left: tHeadOffset.left
-            });
             this._fixedHeader = newTable;
 
             this._adjustHeaders()
@@ -153,7 +161,8 @@ $(function () {
             newTable.addClass('shadowed')
             var initTop = parseInt(newTable.css('top')),
                 container = $("#container"),
-                shadowMax = parseFloat(newTable.css('box-shadow').match(/[^,]+(?=\))/)[0]),
+                rgbaRegex = /[^,]+(?=\))/,
+                shadowMax = parseFloat(newTable.css('box-shadow').match(rgbaRegex)[0]),
                 shadowDist = 1;
             newTable.removeClass('shadowed');
             $(window).scroll(function () {
@@ -162,12 +171,14 @@ $(function () {
                     newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left,
                     top = Math.min(initTop - scroll, initTop),
                     shadowFactor;
+                // manage positioning
                 newTable.css('left', newLeft);
                 newTable.css('top', Math.max(top, 0));
                 newTable.addClass('shadowed')
+                // manage shadow
                 shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - top - shadowDist)) / shadowDist;
                 var shadowCss = newTable.css('box-shadow'),
-                    newShadowCss = shadowCss.replace(/[^,]+(?=\))/, shadowMax * shadowFactor);
+                    newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
                 newTable.css('box-shadow', newShadowCss);
                 if (shadowFactor == 0) newTable.removeClass('shadowed');
             });
@@ -206,9 +217,7 @@ $(function () {
         wsAddr = "ws://" + location.hostname + (location.port ? ':' + location.port : '') + CONFIG.websocket_url,
         ws = new WebSocket(wsAddr),
         bottomDiv = $('#bottom'),
-        animBottom = false,
-        endline = $('#endline'),
-        endlineHeight = endline.height();
+        animBottom = false;
 
     ws.onopen = function () {
         console.log("Socket opened.");
@@ -228,11 +237,6 @@ $(function () {
                     animBottom = false;
                 }
             });
-        }
-
-        endline.height(Math.max(endlineHeight, Math.min(0, $(window).height()-$('body').height())));
-        if($(window).height() < $('body').height() - endline.height()){
-            endline.hide(0);
         }
     };
 
