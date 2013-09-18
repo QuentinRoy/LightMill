@@ -9,10 +9,11 @@
         <title>{% block title %}Trial results: {{ run.id }} ({{ experiment.name }}){% endblock %}</title>
 
 
-        {% block style %}
+        {% block styles %}
             <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/results.css') }}">
         {% endblock %}
 
+        {% block scripts %}{% endblock %}
 
     {% endblock head %}
 </head>

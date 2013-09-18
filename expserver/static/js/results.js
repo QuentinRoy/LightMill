@@ -122,7 +122,7 @@ $(function () {
                 tHeadOffset = tHead.offset(),
                 newCols = newTHead.find('th,td'),
                 cols = tHead.find('th,td'),
-                colNum, col, newCol, nextCol, cellSpacer, tick;
+                colNum, newCol, nextCol = null, tick;
             $('body').append(newTable);
             newTable.append(newTHead);
 
@@ -139,11 +139,15 @@ $(function () {
                 'width': this._table.outerWidth()
             });
 
-            // append the spacers to the columns
             for (colNum = 0; colNum < cols.length; colNum++) {
                 newCol = nextCol || $(newCols[colNum]);
+                newCol.tooltipster({
+                    speed:200,
+                    delay:0,
+                    position:'bottom',
+                    content:"<b>"+newCol.attr('column-type')+":</b> "+newCol.attr(newCol.attr('column-type'))
+                });
                 nextCol = $(newCols[colNum + 1]);
-                col = $(cols[colNum]);
                 // add the tick
                 if (nextCol.length > 0) {
                     tick = $('<div class="tick"></div>');
