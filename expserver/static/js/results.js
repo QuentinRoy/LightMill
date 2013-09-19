@@ -142,10 +142,10 @@ $(function () {
             for (colNum = 0; colNum < cols.length; colNum++) {
                 newCol = nextCol || $(newCols[colNum]);
                 newCol.tooltipster({
-                    speed:200,
-                    delay:0,
-                    position:'bottom',
-                    content:"<b>"+newCol.attr('column-type')+":</b> "+newCol.attr(newCol.attr('column-type'))
+                    speed: 200,
+                    delay: 0,
+                    position: 'bottom',
+                    content: "<b>" + newCol.attr('column-type') + ":</b> " + newCol.attr(newCol.attr('column-type'))
                 });
                 nextCol = $(newCols[colNum + 1]);
                 // add the tick
@@ -220,7 +220,6 @@ $(function () {
     var trt = new TrialResultsTable($('#trial-results')),
         wsAddr = "ws://" + location.hostname + (location.port ? ':' + location.port : '') + CONFIG.websocket_url,
         ws = new WebSocket(wsAddr),
-        bottomDiv = $('#bottom'),
         animBottom = false;
 
     ws.onopen = function () {
@@ -228,21 +227,25 @@ $(function () {
     };
     ws.onmessage = function (msg) {
         console.log(msg);
-        var row = JSON.parse(msg.data);
+        var row = JSON.parse(msg.data),
+            scrollBottom = $(window).scrollTop() + $(window).height(),
+            onBottom = scrollBottom >= $(document).height();
+
         trt.addRow(row);
 
-        if (bottomDiv.is(':appeared') || animBottom) {
-            animBottom = true
+        if (onBottom || animBottom) {
             $('html, body').stop(true, true);
             $('html, body').animate({
-                scrollTop: bottomDiv.offset().top
+                scrollTop: $(document).height() - $(window).height()
             }, {
                 always: function () {
                     animBottom = false;
                 }
             });
+            animBottom = true;
         }
     };
+
 
     $(window).on('mousewheel touchstart mousedown', function () {
         $('html, body').stop();
