@@ -160,42 +160,78 @@ $(function () {
                     $(cells.get(cellNum)).remove();
                 }
                 this._adjustFixedColumnsRowHeight(row, newRow);
+                this._putRowHoverHandler(row, newRow);
             }
 
             this._fixedColumns = newTable;
             this._adjustFixedColumnsWidth();
-            this._createFixedColsScrollHandler();
+            this._putFixedColsScrollHandler();
         },
 
-        _createFixedColsScrollHandler: function () {
+        _putFixedColsScrollHandler: function () {
             var fixedCols = this._fixedColumns,
                 tableTop = this._table.offset().top,
                 rgbaRegex = /[^,]+(?=\))/,
-                shadowMax = 0, shadowCss,
+                shadowMax = 0,
+                shadowCss,
                 shadowDist = this._shadowDist,
-                initLeft = fixedCols.offset().left;
+                initLeft = fixedCols.offset().left,
+                lastTopScroll = null,
+                lastLeftScroll = null;
+
             fixedCols.addClass('shadowed');
             shadowCss = fixedCols.css('box-shadow');
             if (shadowCss && shadowCss != 'none') shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]);
+            else shadowCss = null;
             fixedCols.removeClass('shadowed');
 
-            $(window).scroll(function () {
+            function move() {
                 var top = fixedCols.offset().top,
-                    newTop = parseInt(fixedCols.css('top')) - top + tableTop,
-                    shadowFactor, shadowCss, newShadowCss,
-                    left = Math.min(initLeft - realLeftScroll(), initLeft);
-                // manage positioning
+                    newTop = parseInt(fixedCols.css('top')) - top + tableTop;
                 fixedCols.css('top', newTop);
-                fixedCols.addClass('shadowed')
-                // manage shadow
+            }
+
+            function adjustShadow(scroll) {
+                var shadowFactor, newShadowCss,
+                    left = Math.min(initLeft - scroll, initLeft);
                 shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - left - shadowDist)) / shadowDist;
-                shadowCss = fixedCols.css('box-shadow');
                 newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
+                fixedCols.addClass('shadowed')
                 fixedCols.css('box-shadow', newShadowCss);
                 if (shadowFactor == 0) fixedCols.removeClass('shadowed');
+            }
+
+            $(window).scroll(function () {
+                var leftScroll,
+                    topScroll = realTopScroll();
+                if (topScroll !== lastTopScroll) {
+                    move();
+                    lastTopScroll = topScroll;
+                }
+                if (shadowCss) {
+                    leftScroll = realLeftScroll()
+                    if (leftScroll != lastLeftScroll) {
+                        adjustShadow(leftScroll);
+                        lastLeftScroll = leftScroll;
+                    }
+                }
             });
         },
 
+        _putRowHoverHandler: function (row1, row2) {
+            var $row1 = $(row1), $row2 = $(row2);
+
+            function doIt(row1, row2) {
+                row1.hover(function () {
+                    row2.addClass('hovered');
+                }, function () {
+                    row2.removeClass('hovered');
+                });
+            }
+
+            doIt($row1, $row2);
+            doIt($row2, $row1);
+        },
 
         _adjustFixedColumnsWidth: function () {
             var rows = this._fixedColumns.find('tr'),
@@ -235,6 +271,8 @@ $(function () {
                 if (cellNum >= colCount) this.remove();
                 cellNum++;
             });
+            this._adjustFixedColumnsRowHeight(row, fixedRow);
+            this._putRowHoverHandler(row, fixedRow);
         },
 
 
@@ -289,26 +327,44 @@ $(function () {
             var initTop = parseInt(newTable.css('top')),
                 container = $("#container"),
                 rgbaRegex = /[^,]+(?=\))/,
-                shadowMax = parseFloat(newTable.css('box-shadow').match(rgbaRegex)[0]),
-                shadowDist = this._shadowDist;
+                shadowCss = newTable.css('box-shadow'),
+                shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]),
+                shadowDist = this._shadowDist,
+                lastTopScroll = null,
+                lastLeftScroll = null;
             newTable.removeClass('shadowed');
 
-            $(window).scroll(function () {
-                var scroll = realTopScroll(),
-                    left = newTable.offset().left,
-                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left,
-                    top = Math.min(initTop - scroll, initTop),
-                    shadowFactor;
-                // manage positioning
+            function moveTop(top) {
+                newTable.css('top', top);
+            }
+
+            function moveLeft() {
+                var left = newTable.offset().left,
+                    newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left;
                 newTable.css('left', newLeft);
-                newTable.css('top', Math.max(top, 0));
-                newTable.addClass('shadowed')
-                // manage shadow
-                shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - top - shadowDist)) / shadowDist;
-                var shadowCss = newTable.css('box-shadow'),
+            }
+
+            function adjustShadow(top) {
+                var shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - top - shadowDist)) / shadowDist,
                     newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
                 newTable.css('box-shadow', newShadowCss);
-                if (shadowFactor == 0) newTable.removeClass('shadowed');
+                if (shadowFactor == 0) newTable.removeClass('shadowed')
+                else newTable.addClass('shadowed');
+            }
+
+            $(window).scroll(function () {
+                var topScroll = realTopScroll(),
+                    leftScroll,
+                    topRaw = initTop - topScroll,
+                    top = Math.max(topRaw, 0);
+                if (topScroll !== lastTopScroll) {
+                    moveTop(top);
+                    if (shadowCss) adjustShadow(topRaw);
+                    lastTopScroll = topScroll;
+                } else {
+                    leftScroll = realLeftScroll()
+                    if (leftScroll != lastLeftScroll) moveLeft();
+                }
             });
         },
 

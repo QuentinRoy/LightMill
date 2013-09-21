@@ -52,15 +52,15 @@ table.gridtable [factor] + :not([factor]) {
     border-left-width: 2px;
 }
 
-table.gridtable tbody tr:hover td.odd {
+table.gridtable tbody tr:hover td.odd,  table.gridtable tbody tr.hovered td.odd {
     background-color: #eefdff;
 }
 
-table.gridtable tbody tr:hover td.even {
+table.gridtable tbody tr:hover td.even, table.gridtable tbody tr.hovered td.even {
     background-color: #dff7fa;
 }
 
-table.gridtable tbody tr:hover th {
+table.gridtable tbody tr:hover th, table.gridtable tbody tr.hovered th {
     background-color: #c7dbe1;
 }
 
