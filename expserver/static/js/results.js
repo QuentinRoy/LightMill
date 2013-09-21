@@ -1,9 +1,17 @@
 $(function () {
 
-    function realScroll(scroll) {
+    function realTopScroll(scroll) {
         scroll = scroll || $(window).scrollTop();
         if (scroll < 0) return 0;
         var maxScroll = $(document).height() - $(window).height();
+        if (scroll > maxScroll) return maxScroll;
+        return scroll;
+    }
+
+    function realLeftScroll(scroll) {
+        scroll = scroll || $(window).scrollLeft();
+        if (scroll < 0) return 0;
+        var maxScroll = $(document).width() - $(window).width();
         if (scroll > maxScroll) return maxScroll;
         return scroll;
     }
@@ -18,12 +26,22 @@ $(function () {
     }
 
 
-    function TrialResultsTable(table) {
+    function TrialResultsTable(table, fixedColumnNb) {
+
+        this._fixedColumnNb = fixedColumnNb;
+
         this._table = $(table);
 
         this._fixedHeader = null;
 
+        this._fixedColumns = null;
+
+        this._shadowDist = 1;
+
+        this._cloneColumns(this._fixedColumnNb);
+
         this._cloneHeader();
+
     }
 
     TrialResultsTable.prototype = {
@@ -87,7 +105,7 @@ $(function () {
         },
 
         _adjustHeaders: function () {
-            var th, thi, cellSpacer, fixedTh,
+            var th, thi, fixedTh,
                 tHead = this._table.find('thead'),
                 ths = tHead.find('th'),
                 fixedThs = this._fixedHeader.find('th'),
@@ -112,6 +130,111 @@ $(function () {
                     });
                 }
             }
+        },
+
+
+        _cloneColumns: function (fixedColumnNumber) {
+            var newTable = $(this._table.clone()),
+                rows = this._table.find('tr'),
+                newRows = newTable.find('tr'),
+                rowCount = rows.length,
+                cellCount, rowNum, cellNum, newRow, row, cells,
+                tableOffset = this._table.offset();
+
+            newTable.addClass('fixed-columns');
+            $('body').append(newTable);
+
+            newTable.css({
+                // position: 'fixed', // already in the CSS
+                top: tableOffset.top, // -1 for the spacer height
+                left: tableOffset.left
+            });
+
+            // remove all non fixed columns
+            for (rowNum = 0; rowNum < rowCount; rowNum++) {
+                row = $(rows.get(rowNum));
+                newRow = $(newRows.get(rowNum));
+                cells = newRow.find('th, td');
+                cellCount = cells.length;
+                for (cellNum = fixedColumnNumber; cellNum < cellCount; cellNum++) {
+                    $(cells.get(cellNum)).remove();
+                }
+                this._adjustFixedColumnsRowHeight(row, newRow);
+            }
+
+            this._fixedColumns = newTable;
+            this._adjustFixedColumnsWidth();
+            this._createFixedColsScrollHandler();
+        },
+
+        _createFixedColsScrollHandler: function () {
+            var fixedCols = this._fixedColumns,
+                tableTop = this._table.offset().top,
+                rgbaRegex = /[^,]+(?=\))/,
+                shadowMax = 0, shadowCss,
+                shadowDist = this._shadowDist,
+                initLeft = fixedCols.offset().left;
+            fixedCols.addClass('shadowed');
+            shadowCss = fixedCols.css('box-shadow');
+            if (shadowCss && shadowCss != 'none') shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]);
+            fixedCols.removeClass('shadowed');
+
+            $(window).scroll(function () {
+                var top = fixedCols.offset().top,
+                    newTop = parseInt(fixedCols.css('top')) - top + tableTop,
+                    shadowFactor, shadowCss, newShadowCss,
+                    left = Math.min(initLeft - realLeftScroll(), initLeft);
+                // manage positioning
+                fixedCols.css('top', newTop);
+                fixedCols.addClass('shadowed')
+                // manage shadow
+                shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - left - shadowDist)) / shadowDist;
+                shadowCss = fixedCols.css('box-shadow');
+                newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
+                fixedCols.css('box-shadow', newShadowCss);
+                if (shadowFactor == 0) fixedCols.removeClass('shadowed');
+            });
+        },
+
+
+        _adjustFixedColumnsWidth: function () {
+            var rows = this._fixedColumns.find('tr'),
+                origRows = this._table.find('tr'),
+                width, origCell;
+            rows.each(function (rowNum, row) {
+                var origRow = origRows.get(rowNum),
+                    cells = $(row).find('td, th'),
+                    origCells = $(origRow).find('td, th');
+                cells.each(function (cellNum, fixedCell) {
+                    origCell = origCells.get(cellNum);
+                    width = origCells.width();
+                    $(fixedCell).css({
+                        width: width,
+                        'min-width': width,
+                        'max-width': width
+                    });
+                });
+
+            });
+
+        },
+
+        _adjustFixedColumnsRowHeight: function (originalRow, fixedRow) {
+            var height = $(originalRow).height();
+            $(fixedRow).css({
+                height: height
+            });
+        },
+
+        _addFixedColumnsNewRow: function (row) {
+            var fixedRow = row.clone(),
+                colCount = this._fixedColumnNb,
+                cellNum = 0;
+            this._fixedColumns.first('tbody').append(fixedRow);
+            fixedRow.find('th, td').each(function () {
+                if (cellNum >= colCount) this.remove();
+                cellNum++;
+            });
         },
 
 
@@ -167,10 +290,11 @@ $(function () {
                 container = $("#container"),
                 rgbaRegex = /[^,]+(?=\))/,
                 shadowMax = parseFloat(newTable.css('box-shadow').match(rgbaRegex)[0]),
-                shadowDist = 1;
+                shadowDist = this._shadowDist;
             newTable.removeClass('shadowed');
+
             $(window).scroll(function () {
-                var scroll = realScroll(),
+                var scroll = realTopScroll(),
                     left = newTable.offset().left,
                     newLeft = parseInt(newTable.css('left')) - left + tHeadOffset.left,
                     top = Math.min(initTop - scroll, initTop),
@@ -189,7 +313,7 @@ $(function () {
         },
 
         addRow: function (rowValues) {
-            var col, colNum, newCol,
+            var col, colNum,
                 tr = this._table.find("#trial-results-header"),
                 cols = tr.find("th"),
                 colCount = cols.length,
@@ -212,12 +336,15 @@ $(function () {
                 }
 
             }
-            if (this._table.width() != tableWidth) this._adjustHeaders();
-
+            this._addFixedColumnsNewRow(newRow);
+            if (this._table.width() != tableWidth) {
+                this._adjustHeaders();
+                this._adjustFixedColumnsWidth();
+            }
         }
     };
 
-    var trt = new TrialResultsTable($('#trial-results')),
+    var trt = new TrialResultsTable($('#trial-results'), 2),
         wsAddr = "ws://" + location.hostname + (location.port ? ':' + location.port : '') + CONFIG.websocket_url,
         ws = new WebSocket(wsAddr),
         animBottom = false;
@@ -264,7 +391,7 @@ $(function () {
     };
 
     $(window).scroll(function () {
-        var scroll = realScroll();
+        var scroll = realTopScroll();
         $('#title').css('top', -scroll);
     })
 });
