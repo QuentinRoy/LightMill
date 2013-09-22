@@ -32,6 +32,8 @@ $(function () {
 
         this._table = $(table);
 
+        this._fixedTable = null;
+
         this._fixedHeader = null;
 
         this._fixedColumns = null;
@@ -108,7 +110,7 @@ $(function () {
             var th, thi, fixedTh,
                 tHead = this._table.find('thead'),
                 ths = tHead.find('th'),
-                fixedThs = this._fixedHeader.find('th'),
+                fixedThs = this._fixedTable.find('th'),
                 thWidth, tick, gap, tickPosition;
             for (thi = 0; thi < ths.length; thi++) {
                 th = $(ths[thi]);
@@ -279,15 +281,17 @@ $(function () {
         _cloneHeader: function () {
             var tHead = this._table.find('thead'),
                 newTHead = tHead.clone(),
-                newTable = $('<table class="gridtable fixed-header" ></table>'),
+                newTable = $('<table class="gridtable" ></table>'),
+                wrapper = $('<div id="top-header" class="fixed-header"></div>'),
                 tHeadOffset = tHead.offset(),
                 newCols = newTHead.find('th,td'),
                 cols = tHead.find('th,td'),
                 colNum, newCol, nextCol = null, tick;
-            $('body').append(newTable);
+            $('body').append(wrapper);
             newTable.append(newTHead);
+            wrapper.append(newTable);
 
-            newTable.css({
+            wrapper.css({
                 // position: 'fixed', // already in the CSS
                 top: tHeadOffset.top, // -1 for the spacer height
                 left: tHeadOffset.left
@@ -319,23 +323,25 @@ $(function () {
                 }
             }
 
-            this._fixedHeader = newTable;
+            this._fixedHeader = wrapper;
+            this._fixedTable = newTable;
 
             this._adjustHeaders()
 
-            newTable.addClass('shadowed')
-            var initTop = parseInt(newTable.css('top')),
-                container = $("#container"),
+
+            var initTop = parseInt(wrapper.css('top')),
                 rgbaRegex = /[^,]+(?=\))/,
-                shadowCss = newTable.css('box-shadow'),
-                shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]),
+                shadowCss = wrapper.css('box-shadow'),
+                shadowMax,
                 shadowDist = this._shadowDist,
                 lastTopScroll = null,
                 lastLeftScroll = null;
-            newTable.removeClass('shadowed');
+            wrapper.addClass('shadowed')
+            if (shadowCss && shadowCss !== 'none')  shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]);
+            wrapper.removeClass('shadowed');
 
             function moveTop(top) {
-                newTable.css('top', top);
+                wrapper.css('top', top);
             }
 
             function moveLeft() {
@@ -345,11 +351,13 @@ $(function () {
             }
 
             function adjustShadow(top) {
+                top = top || initTop - realTopScroll();
                 var shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - top - shadowDist)) / shadowDist,
                     newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
-                newTable.css('box-shadow', newShadowCss);
-                if (shadowFactor == 0) newTable.removeClass('shadowed')
-                else newTable.addClass('shadowed');
+
+                wrapper.css('box-shadow', newShadowCss);
+                if (shadowFactor == 0) wrapper.removeClass('shadowed')
+                else wrapper.addClass('shadowed');
             }
 
             $(window).scroll(function () {
@@ -366,6 +374,9 @@ $(function () {
                     if (leftScroll != lastLeftScroll) moveLeft();
                 }
             });
+
+            adjustShadow();
+
         },
 
         addRow: function (rowValues) {

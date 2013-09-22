@@ -18,6 +18,11 @@
     table-layout: fixed;
 }
 
+.fixed-header table {
+    position:relative;
+    left:0;
+}
+
 .fixed-header .cell-spacer {
     height: 1px;
 }

@@ -8,6 +8,9 @@ html, body {
     text-align: center;
     z-index:2;
     background-color: white;
+    margin:0;
+    padding-top:22px;
+    padding-bottom:22px;
 }
 
 #container {
