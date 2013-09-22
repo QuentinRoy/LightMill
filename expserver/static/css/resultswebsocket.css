@@ -32,13 +32,18 @@
 }
 
 .fixed-columns[class~=shadowed]{
-    box-shadow: 3px 3px 5px -2px rgba(0, 0, 0, 0.3);
+    box-shadow: 3px 3px 5px -2px rgba(0, 0, 0, 0.5);
+}
+
+.header-left-cols[class~=shadowed]{
+   box-shadow: 3px 3px 5px -2px rgba(0, 0, 0, 0.2);
 }
 
 .tick {
     position:absolute;
-    bottom:0;
-    background-color: #666666;
+    bottom:1px;
+    left:0;
+    background-color: black;
     width:1px;
     height:2px;
     margin-top:-8px;

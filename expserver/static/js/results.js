@@ -32,11 +32,13 @@ $(function () {
 
         this._table = $(table);
 
-        this._fixedTable = null;
+        this._fixedHeaderTable = null;
 
         this._fixedHeader = null;
 
         this._fixedColumns = null;
+
+        this._headerLeftCols = null;
 
         this._shadowDist = 1;
 
@@ -106,35 +108,6 @@ $(function () {
             return newRow;
         },
 
-        _adjustHeaders: function () {
-            var th, thi, fixedTh,
-                tHead = this._table.find('thead'),
-                ths = tHead.find('th'),
-                fixedThs = this._fixedTable.find('th'),
-                thWidth, tick, gap, tickPosition;
-            for (thi = 0; thi < ths.length; thi++) {
-                th = $(ths[thi]);
-                fixedTh = $(fixedThs[thi]);
-                thWidth = th.width();
-                // adjust width
-                fixedTh.css({
-                    'min-width': thWidth,
-                    'max-width': thWidth,
-                    'width': thWidth
-                });
-                // adjust tick
-                tick = fixedTh.find('.tick');
-                if (tick.length > 0) {
-                    tickPosition = tick.position();
-                    gap = th.outerWidth() - tickPosition.left - Math.floor(parseInt(tick.css('width')) / 2);
-                    tick.css({
-                        left: fixedTh.offset().left + tickPosition.left + gap
-                    });
-                }
-            }
-        },
-
-
         _cloneColumns: function (fixedColumnNumber) {
             var newTable = $(this._table.clone()),
                 rows = this._table.find('tr'),
@@ -179,11 +152,15 @@ $(function () {
                 shadowDist = this._shadowDist,
                 initLeft = fixedCols.offset().left,
                 lastTopScroll = null,
-                lastLeftScroll = null;
+                lastLeftScroll = null,
+                headerLeftColsShadowCss = 'toSet', // small hack just to be trigger adjust shadow the first time
+                headerLeftColsShadowMax = null,
+                that = this;
 
             fixedCols.addClass('shadowed');
             shadowCss = fixedCols.css('box-shadow');
-            if (shadowCss && shadowCss != 'none') shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]);
+            if (shadowCss === 'none') shadowCss = null;
+            if (shadowCss) shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]);
             else shadowCss = null;
             fixedCols.removeClass('shadowed');
 
@@ -194,13 +171,39 @@ $(function () {
             }
 
             function adjustShadow(scroll) {
-                var shadowFactor, newShadowCss,
-                    left = Math.min(initLeft - scroll, initLeft);
+                var shadowFactor, newShadowCss, newHLCShadowCss,
+                    left = Math.min(initLeft - scroll, initLeft)
                 shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - left - shadowDist)) / shadowDist;
-                newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
-                fixedCols.addClass('shadowed')
-                fixedCols.css('box-shadow', newShadowCss);
-                if (shadowFactor == 0) fixedCols.removeClass('shadowed');
+
+
+                if (shadowFactor == 0) {
+                    fixedCols.removeClass('shadowed');
+                    that._headerLeftCols.removeClass('shadowed');
+                    fixedCols.css('box-shadow', '');
+                    that._headerLeftCols.css('box-shadow', '');
+                } else {
+                    fixedCols.addClass('shadowed');
+                    that._headerLeftCols.addClass('shadowed');
+
+                    if (headerLeftColsShadowCss === 'toSet') {
+                        headerLeftColsShadowCss = that._headerLeftCols.css('box-shadow');
+                        if (headerLeftColsShadowCss === 'none')headerLeftColsShadowCss = null;
+                    }
+
+                    if (shadowCss) {
+                        newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
+                        fixedCols.css('box-shadow', newShadowCss);
+                    }
+
+                    if (headerLeftColsShadowCss) {
+                        headerLeftColsShadowMax = headerLeftColsShadowMax ||
+                            parseFloat(headerLeftColsShadowCss.match(rgbaRegex)[0]);
+                        newHLCShadowCss = headerLeftColsShadowCss.replace(
+                            rgbaRegex,
+                            headerLeftColsShadowMax * shadowFactor);
+                        that._headerLeftCols.css('box-shadow', newHLCShadowCss);
+                    }
+                }
             }
 
             $(window).scroll(function () {
@@ -210,7 +213,7 @@ $(function () {
                     move();
                     lastTopScroll = topScroll;
                 }
-                if (shadowCss) {
+                if (shadowCss || headerLeftColsShadowCss) {
                     leftScroll = realLeftScroll()
                     if (leftScroll != lastLeftScroll) {
                         adjustShadow(leftScroll);
@@ -277,6 +280,41 @@ $(function () {
             this._putRowHoverHandler(row, fixedRow);
         },
 
+        _cloneHeaderLeftCols: function () {
+            var headerLeftColsWrapper = $('<div class="header-left-cols"></div>'),
+                fixedColNum = this._fixedColumnNb,
+                headerLeftCols = this._fixedHeaderTable.clone(),
+                height = this._fixedHeader.height();
+            headerLeftCols.css({
+                'table-layout': 'fixed',
+                position: 'absolute',
+                left: 0,
+                bottom: 0
+            });
+
+            headerLeftCols.appendTo(headerLeftColsWrapper);
+            headerLeftColsWrapper.appendTo(this._fixedHeader);
+
+            headerLeftCols.find('tr').each(function (rowNum, row) {
+                $(row).find('td, th').each(function (colNum, col) {
+                    if (colNum >= fixedColNum) $(col).remove();
+                });
+            });
+
+            headerLeftColsWrapper.css({
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                margin: 0,
+                padding: 0,
+                height: height,
+                'background-color': headerLeftCols.find('td, th').css('background-color'),
+                width: headerLeftCols.outerWidth()
+            });
+
+            this._headerLeftCols = headerLeftColsWrapper;
+
+        },
 
         _cloneHeader: function () {
             var tHead = this._table.find('thead'),
@@ -324,19 +362,20 @@ $(function () {
             }
 
             this._fixedHeader = wrapper;
-            this._fixedTable = newTable;
+            this._fixedHeaderTable = newTable;
 
             this._adjustHeaders()
 
 
             var initTop = parseInt(wrapper.css('top')),
                 rgbaRegex = /[^,]+(?=\))/,
-                shadowCss = wrapper.css('box-shadow'),
+                shadowCss,
                 shadowMax,
                 shadowDist = this._shadowDist,
                 lastTopScroll = null,
                 lastLeftScroll = null;
-            wrapper.addClass('shadowed')
+            wrapper.addClass('shadowed');
+            shadowCss = wrapper.css('box-shadow');
             if (shadowCss && shadowCss !== 'none')  shadowMax = parseFloat(shadowCss.match(rgbaRegex)[0]);
             wrapper.removeClass('shadowed');
 
@@ -376,7 +415,50 @@ $(function () {
             });
 
             adjustShadow();
+            this._cloneHeaderLeftCols();
+        },
 
+        _adjustHeaders: function () {
+            var scrollLeft = $(window).scrollLeft(),
+                th, thi, fixedTh,
+                tHead = this._table.find('thead'),
+                ths = tHead.find('th'),
+                fixedThs = this._fixedHeaderTable.find('th, td'),
+                thWidth, tick, gap, tickCenter, thRight, tickCssLeft,
+                fixedColThs = this._fixedColumns.find('th, td'),
+                fixedColTh, newCss;
+            $(window).scrollLeft(0);
+            for (thi = 0; thi < ths.length; thi++) {
+                th = $(ths[thi]);
+                fixedTh = $(fixedThs[thi]);
+                thWidth = th.width();
+                tick = fixedTh.find('.tick');
+                // adjust width
+                newCss = {
+                    'min-width': thWidth,
+                    'max-width': thWidth,
+                    'width': thWidth
+
+                }
+                fixedTh.css(newCss);
+                // adjust fixed col width
+                if (thi < this._fixedColumnNb) {
+                    fixedColTh = $(fixedColThs[thi]);
+                    fixedColTh.css(newCss);
+                    tick = fixedColTh.find('.tick').add(tick);
+                }
+                // adjust ticks
+                if (tick.length > 0) {
+                    tickCenter = tick.offset().left + Math.floor(tick.outerWidth() / 2);
+                    thRight = th.offset().left + th.outerWidth();
+                    gap = thRight - tickCenter;
+                    tickCssLeft = parseInt(tick.css('left'));
+                    tick.css({
+                        left: tickCssLeft + gap
+                    });
+                }
+            }
+            $(window).scrollLeft(scrollLeft);
         },
 
         addRow: function (rowValues) {
