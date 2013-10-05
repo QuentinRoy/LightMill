@@ -477,7 +477,10 @@ class MeasureValue(AbstractConcreteBase, db.Model):
 
         self.measure = measure
         # convert boolean into string repr
-        self.value = {True: 'true', False: 'false'}.get(value, value)
+        if isinstance(value, bool):
+            self.value = {True: 'true', False: 'false'}.get(value, value)
+        else:
+            self.value = value
 
     def __repr__(self):
         return "<{} of {} (value: '{}')>".format(self.__class__.__name__,
