@@ -269,13 +269,15 @@ $(function () {
 
         _addFixedColumnsNewRow: function (row) {
             var fixedRow = row.clone(),
-                colCount = this._fixedColumnNb,
-                cellNum = 0;
+                colMax = this._fixedColumnNb,
+                cellNum = 0, cols, colNum, col, colCount;
             this._fixedColumns.first('tbody').append(fixedRow);
-            fixedRow.find('th, td').each(function () {
-                if (cellNum >= colCount) this.remove();
-                cellNum++;
-            });
+            cols = fixedRow.find('th, td');
+            colCount = cols.length;
+            for(colNum = colMax; colNum < colCount;colNum++){
+                col = $(cols[colNum]);
+                col.remove();
+            }
             this._adjustFixedColumnsRowHeight(row, fixedRow);
             this._putRowHoverHandler(row, fixedRow);
         },
