@@ -440,10 +440,12 @@ class Event(db.Model):
     measure_values = db.relationship('EventMeasureValue',
                                      cascade="all, delete-orphan",
                                      backref=db.backref('event'),
-                                     lazy='dynamic')
+                                     lazy='joined',
+                                     collection_class=attribute_mapped_collection('measure.id'))
 
     def __init__(self, measure_values, number, trial=None):
-        self.measure_values = measure_values
+        for measure_value in measure_values:
+            self.measure_values[measure_value.measure.id] = measure_value
         self.number = number
         self.trial = trial
 
