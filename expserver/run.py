@@ -40,12 +40,11 @@ if os.path.exists(default_settings.TOUCHSTONE_FILE):
     import_experiment(default_settings.TOUCHSTONE_FILE)
 
 
-@serving.run_with_reloader
-def runServer():
-    app.debug = True
-    http_server = WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
-    http_server.serve_forever()
-
-
 if __name__ == '__main__':
+    @serving.run_with_reloader
+    def runServer():
+        app.debug = True
+        http_server = WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+        http_server.serve_forever()
+
     runServer()
