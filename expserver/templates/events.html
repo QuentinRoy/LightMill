@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    {% block head %}
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <title>{% block title %}Events: {{ run.id }} ({{ experiment.name }}){% endblock %}</title>
+
+
+        {% block styles %}
+            <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/results.css') }}">
+        {% endblock %}
+
+        {% block scripts %}{% endblock %}
+
+    {% endblock head %}
+</head>
+
+<body>
+{% block body %}
+
+    <h1 id='title'>Events of trial {{ block.number }} in block {{ trial.number }}</h1>
+
+    <div id="container">
+        {% block content %}{% strip %}
+            <table class="gridtable" id='events' run='{{ run.id }}' experiment='{{ experiment.id }}' block='{{ block.number }}' trial='{{ trial.number }}'>
+                <thead>
+                {%- block table_head -%}
+                    {% set cycle = cycler('odd', 'even') %}
+                    <tr id='events-header' class='table-header'>
+
+                        <th class='column-event-number {{ " " + cycle.next() }}' column-type='info' info='event_number'>
+                            Event number
+                        </th>
+
+                        {% for measure in event_measures %}
+                            <th class='column-{{ measure.id }}-measure {{ ' ' + cycle.next() }}'
+                                column-type='measure' measure='{{ measure.id }}'
+                                title='measure id: {{ ' '+ measure.id }}'>
+                                {%- if measure.name != None -%}
+                                    {{- measure.name -}}
+                                {%- else -%}
+                                    {{- measure.id -}}
+                                {% endif %}
+                            </th>
+                        {% endfor %}
+                    </tr>
+                {% endblock %}
+                </thead>
+                <tbody>{% block table_body %}
+
+                    {% for event in trial.events %}
+                        {% set cycle = cycler('odd', 'even') %}
+                        <tr id="event-{{ event.number }}"
+                            event-number='{{ event.number }}'>
+
+                            <th class="column-event-number {{ ' ' + cycle.next() }}" column-type='info'
+                                info="event-number">
+                                {{ event.number }}
+                            </th>
+
+
+                            {% for measure in event_measures %}
+                                <td class="column-{{ measure.id }}-measure {{ ' '+cycle.next() }}" column-type='measure'
+                                    measure='{{ measure.id }}'>
+                                    {% if measure.id in event.measure_values %}
+                                        {{ event.measure_values[measure.id].value }}
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+
+
+                {% endblock %}</tbody>
+            </table>
+        {% endstrip %}{% endblock %}
+    </div>
+
+{% endblock body %}
+</body>
+
+</html>
