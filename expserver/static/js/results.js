@@ -102,10 +102,24 @@ $(function () {
             var newRow = $('<tr></tr>'),
                 trial = rowValues.number,
                 block = rowValues.block_number;
+
             newRow.attr('trial-number', trial);
             newRow.attr('block-number', block);
             newRow.attr('id', 'trial-results-' + trial + '-' + block);
+
+            this._createRowLink(newRow);
+
             return newRow;
+        },
+
+
+        _createRowLink: function (row) {
+            var eventsUrl = "/trial/" + CONFIG.experiment_id + '/' + CONFIG.run_id + '/' + row.attr('block-number')
+                + '/' + row.attr('trial-number') + '/events';
+            row.css('cursor', 'pointer');
+            row.click(function () {
+                window.open(eventsUrl);
+            });
         },
 
         _cloneColumns: function (fixedColumnNumber) {
@@ -274,12 +288,13 @@ $(function () {
             this._fixedColumns.first('tbody').append(fixedRow);
             cols = fixedRow.find('th, td');
             colCount = cols.length;
-            for(colNum = colMax; colNum < colCount;colNum++){
+            for (colNum = colMax; colNum < colCount; colNum++) {
                 col = $(cols[colNum]);
                 col.remove();
             }
             this._adjustFixedColumnsRowHeight(row, fixedRow);
             this._putRowHoverHandler(row, fixedRow);
+            this._createRowLink(fixedRow);
         },
 
         _cloneHeaderLeftCols: function () {
