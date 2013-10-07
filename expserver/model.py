@@ -440,10 +440,12 @@ class Event(db.Model):
     measure_values = db.relationship('EventMeasureValue',
                                      cascade="all, delete-orphan",
                                      backref=db.backref('event'),
-                                     lazy='dynamic')
+                                     lazy='joined',
+                                     collection_class=attribute_mapped_collection('measure.id'))
 
     def __init__(self, measure_values, number, trial=None):
-        self.measure_values = measure_values
+        for measure_value in measure_values:
+            self.measure_values[measure_value.measure.id] = measure_value
         self.number = number
         self.trial = trial
 
@@ -474,12 +476,11 @@ class MeasureValue(AbstractConcreteBase, db.Model):
                 raise NoResultFound("Cannot find target measure: " + measure)
 
         self.measure = measure
-
-        # convert booleans into string repr
-        if type(value) == 'bool':
-            value = {True: 'true', False: 'false'}.get(value)
-
-        self.value = value
+        # convert boolean into string repr
+        if isinstance(value, bool):
+            self.value = {True: 'true', False: 'false'}.get(value, value)
+        else:
+            self.value = value
 
     def __repr__(self):
         return "<{} of {} (value: '{}')>".format(self.__class__.__name__,

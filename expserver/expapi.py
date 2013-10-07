@@ -330,7 +330,8 @@ def trial_props(experiment, run, block, trial):
             for event_measures in data['measures']['events']:
                 values = []
                 for measure_id, measure_value in _convert_measures(event_measures):
-                    values.append(EventMeasureValue(measure_value, measures[measure_id]))
+                    if measure_value is not None:
+                        values.append(EventMeasureValue(measure_value, measures[measure_id]))
                 Event(values, event_num, trial)
                 event_num += 1
             trial.set_completed()
@@ -367,6 +368,19 @@ def _trial_info(trial):
         'total': trial.block.length(),
         'completion_date': trial.completion_date
     }
+
+
+@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/events')
+def events(experiment, run, block, trial):
+    event_measures = sorted((measure for measure in experiment.measures.itervalues() if measure.event_level),
+                            key=lambda x: x.id)
+    return render_template('events.html',
+                           trial=trial,
+                           block=block,
+                           event_measures=event_measures,
+                           run=run,
+                           experiment=experiment)
+
 
 
 @exp_api.route('/run/<experiment>/<run>/results')
