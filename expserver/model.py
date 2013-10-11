@@ -488,6 +488,9 @@ class MeasureValue(AbstractConcreteBase, db.Model):
                                                  self.value)
 
 
+class MeasureLevelError(ValueError):
+    pass
+
 class TrialMeasureValue(MeasureValue):
     __tablename__ = 'trial_measure_value'
     __mapper_args__ = {'concrete': True,
@@ -502,7 +505,7 @@ class TrialMeasureValue(MeasureValue):
     def __init__(self, *args, **kwargs):
         super(TrialMeasureValue, self).__init__(*args, **kwargs)
         if not self.measure.trial_level:
-            raise ValueError("Associated measure ({}) is not at the trial level.".format(self.measure.id))
+            raise MeasureLevelError("Associated measure ({}) is not at the trial level.".format(self.measure.id))
 
 
 class EventMeasureValue(MeasureValue):
@@ -519,7 +522,7 @@ class EventMeasureValue(MeasureValue):
     def __init__(self, *args, **kwargs):
         super(EventMeasureValue, self).__init__(*args, **kwargs)
         if not self.measure.event_level:
-            raise ValueError("Associated measure ({}) is not at the event level.".format(self.measure.id))
+            raise MeasureLevelError("Associated measure ({}) is not at the event level.".format(self.measure.id))
 
 
 #################################

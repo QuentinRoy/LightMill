@@ -1,3 +1,5 @@
+import warnings
+
 __author__ = 'Quentin Roy'
 
 from flask.blueprints import Blueprint
@@ -7,7 +9,7 @@ import os
 import uuid
 from flask import jsonify, redirect, request, render_template, abort
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
-from model import Event, TrialMeasureValue, EventMeasureValue
+from model import Event, TrialMeasureValue, EventMeasureValue, MeasureLevelError
 from time import time
 from collections import OrderedDict
 from sqlalchemy.exc import IntegrityError
@@ -23,11 +25,10 @@ exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
 class UnknownElement(Exception):
     status_code = 400
 
-    def __init__(self, message, status_code=None, payload=None):
+    def __init__(self, message, status_code=status_code, payload=None):
         Exception.__init__(self)
         self.message = message
-        if status_code is not None:
-            self.status_code = status_code
+        self.status_code = status_code
         self.payload = payload
 
     def to_dict(self):
@@ -36,7 +37,26 @@ class UnknownElement(Exception):
         return rv
 
 
+class WrongMeasureKey(Warning):
+    status_code = 400
+
+    def __init__(self, message, status_code=status_code, payload=None):
+        Warning.__init__(self, message)
+        self.message = message
+        self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+# comment this to allow invalid measure key
+warnings.simplefilter('error', WrongMeasureKey)
+
+
 @exp_api.errorhandler(UnknownElement)
+@exp_api.errorhandler(WrongMeasureKey)
 def handle_invalid_usage(error):
     error_dict = error.to_dict()
     error_dict['type'] = error.__class__.__name__
@@ -322,22 +342,37 @@ def trial_props(experiment, run, block, trial):
             response.status_code = 405
             return response
         measures = experiment.measures
-        try:
-            for measure_id, measure_value in _convert_measures(data['measures']):
+
+        for measure_id, measure_value in _convert_measures(data['measures']):
+            try:
                 if measure_id != 'events':
                     trial.measure_values.append(TrialMeasureValue(measure_value, measures[measure_id]))
-            event_num = 0
-            for event_measures in data['measures']['events']:
-                values = []
-                for measure_id, measure_value in _convert_measures(event_measures):
+            except KeyError:
+                msg = 'Invalid trial measure key: "{}"'.format(measure_id)
+                warnings.warn(msg, WrongMeasureKey)
+            except MeasureLevelError:
+                msg = 'Measure key "{}" is not at the trial level.'.format(measure_id)
+                warnings.warn(msg, WrongMeasureKey)
+        event_num = 0
+        for event_measures in data['measures']['events']:
+            values = []
+            for measure_id, measure_value in _convert_measures(event_measures):
+                try:
                     if measure_value is not None:
                         values.append(EventMeasureValue(measure_value, measures[measure_id]))
-                Event(values, event_num, trial)
-                event_num += 1
-            trial.set_completed()
-            db.session.commit()
-        except KeyError as ke:
-            raise UnknownElement('Invalid factor or value key: {}'.format(ke.args[0]))
+                except KeyError:
+                    msg = 'Invalid event measure key: "{}"'.format(measure_id)
+                    warnings.warn(msg, WrongMeasureKey)
+
+                except MeasureLevelError:
+                    msg = 'Measure key "{}" is not at the event level.'.format(measure_id)
+                    warnings.warn(msg, WrongMeasureKey)
+
+            Event(values, event_num, trial)
+            event_num += 1
+        trial.set_completed()
+        db.session.commit()
+
     return jsonify(_trial_info(trial))
 
 
@@ -380,7 +415,6 @@ def events(experiment, run, block, trial):
                            event_measures=event_measures,
                            run=run,
                            experiment=experiment)
-
 
 
 @exp_api.route('/run/<experiment>/<run>/results')
@@ -449,6 +483,7 @@ class _TrialCompletedAlert():
 
 
 _trial_completed_alert = _TrialCompletedAlert()
+
 
 @exp_api.route('/run/<experiment>/<run>/result_socket')
 def result_socket(experiment, run):
