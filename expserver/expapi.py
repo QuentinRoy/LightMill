@@ -52,7 +52,7 @@ class WrongMeasureKey(Warning):
         return rv
 
 # comment this to allow invalid measure key
-warnings.simplefilter('error', WrongMeasureKey)
+# warnings.simplefilter('error', WrongMeasureKey)
 
 
 @exp_api.errorhandler(UnknownElement)
@@ -348,10 +348,10 @@ def trial_props(experiment, run, block, trial):
                 if measure_id != 'events':
                     trial.measure_values.append(TrialMeasureValue(measure_value, measures[measure_id]))
             except KeyError:
-                msg = 'Invalid trial measure key: "{}"'.format(measure_id)
+                msg = "Invalid trial measure key: '{}' (value: '{}')".format(measure_id, measure_value)
                 warnings.warn(msg, WrongMeasureKey)
             except MeasureLevelError:
-                msg = 'Measure key "{}" is not at the trial level.'.format(measure_id)
+                msg = "Measure key '{}'(value: '{}') is not at the trial level.".format(measure_id, measure_value)
                 warnings.warn(msg, WrongMeasureKey)
         event_num = 0
         for event_measures in data['measures']['events']:
@@ -361,11 +361,11 @@ def trial_props(experiment, run, block, trial):
                     if measure_value is not None:
                         values.append(EventMeasureValue(measure_value, measures[measure_id]))
                 except KeyError:
-                    msg = 'Invalid event measure key: "{}"'.format(measure_id)
+                    msg = "Invalid event measure key: '{}' (value: '{}')".format(measure_id, measure_value)
                     warnings.warn(msg, WrongMeasureKey)
 
                 except MeasureLevelError:
-                    msg = 'Measure key "{}" is not at the event level.'.format(measure_id)
+                    msg = "Measure key '{}' (value: '{}') is not at the event level.".format(measure_id, measure_value)
                     warnings.warn(msg, WrongMeasureKey)
 
             Event(values, event_num, trial)
@@ -491,8 +491,8 @@ def result_socket(experiment, run):
 
         ws = request.environ['wsgi.websocket']
 
-        def send_trial(trial):
-            trial_info = _get_trial_measure_info(trial)
+        def send_trial(func_trial):
+            trial_info = _get_trial_measure_info(func_trial)
 
             # convert the factors
             factors = trial_info['factors']
@@ -500,12 +500,12 @@ def result_socket(experiment, run):
                 factors[factor_id] = factors[factor_id].id
 
             print('WebSocket send')
-            message = json.dumps(trial_info)
-            ws.send(message)
+            func_message = json.dumps(trial_info)
+            ws.send(func_message)
 
         def listener(trial_number, block_number):
-            trial = Trial.query.get_by_number(trial_number, block_number, run.id, experiment.id)
-            send_trial(trial)
+            func_trial = Trial.query.get_by_number(trial_number, block_number, run.id, experiment.id)
+            send_trial(func_trial)
 
         for trial in run.trials.filter(Trial.completion_date != None):
             send_trial(trial)
