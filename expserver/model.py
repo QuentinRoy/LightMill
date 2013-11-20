@@ -291,10 +291,17 @@ class Trial(db.Model):
         return self.block.run if self.block is not None else None
 
     def iter_all_factor_values(self):
+        unseen = set(self.experiment.factors)
         for value in self.factor_values:
+            unseen.remove(value.factor)
             yield value
         for value in self.block.factor_values:
+            unseen.remove(value.factor)
             yield value
+        for factor in unseen:
+            if factor.default_value:
+                yield factor.default_value
+
 
     def __init__(self, block, values, number=None):
         self.number = number if number is not None else _free_number(trial.number for trial in block.trials)
