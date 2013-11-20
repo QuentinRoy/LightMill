@@ -35,12 +35,23 @@ def _parse_experiment(dom):
 
 
 def _parse_factor(dom):
+    values = []
+    default_value = None
+    for v_dom in dom.findall('value'):
+        value = _parse_value(v_dom)
+        values.append(value)
+        default = v_dom.get('default')
+        if default in ['true', '1', 'True', 'yes', 'Yes']:
+            default_value = value
+
+
     return Factor(id=dom.get('id'),
                   name=_nonize_string(dom.get('name')),
                   type=dom.get('type'),
                   kind=_nonize_string(dom.get('kind')),
                   tag=_nonize_string(dom.get('tag')),
-                  values=[_parse_value(v_dom) for v_dom in dom.findall('value')])
+                  values=values,
+                  default_value=default_value)
 
 
 def _parse_measure(dom):
@@ -54,10 +65,10 @@ def _parse_measure(dom):
             event_level = True
 
     return Measure(id=dom.get('id'),
-                  name=_nonize_string(dom.get('name')),
-                  type=dom.get('type'),
-                  trial_level=trial_level,
-                  event_level=event_level)
+                   name=_nonize_string(dom.get('name')),
+                   type=dom.get('type'),
+                   trial_level=trial_level,
+                   event_level=event_level)
 
 
 def _parse_value(dom):
@@ -90,7 +101,8 @@ def _parse_factor_values_string(values_string, experiment):
 
 def _parse_block(dom, run):
     practice = dom.tag == 'practice'
-    values = _parse_factor_values_string(dom.get('values'), run.experiment)
+    values_string = dom.get('values')
+    values = _parse_factor_values_string(dom.get('values'), run.experiment) if values_string else []
     block = Block(run=run,
                   practice=practice,
                   values=values)
@@ -102,7 +114,8 @@ def _parse_block(dom, run):
 
 def _parse_trial(dom, block):
     num = dom.get('number')
-    values = _parse_factor_values_string(dom.get('values'), block.experiment)
+    values_string = dom.get('values')
+    values = _parse_factor_values_string(values_string, block.experiment) if values_string else []
     trial = Trial(block,
                   number=int(num) if num is not None else None,
                   values=values)

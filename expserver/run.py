@@ -2,8 +2,7 @@ __author__ = 'Quentin Roy'
 
 
 import sys
-if 'threading' in sys.modules:
-        raise Exception('threading module loaded before patching!')
+
 
 from gevent import monkey
 monkey.patch_all()

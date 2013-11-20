@@ -147,12 +147,15 @@ def expe_props(experiment):
     start = time()
     factors = {}
     for factor in experiment.factors:
-        factors[factor.id] = {
+        factor_dict = {
             'tag': factor.tag,
             'name': factor.name,
             'type': factor.type,
             'values': dict((value.id, value.name) for value in factor.values)
         }
+        if factor.default_value:
+            factor_dict['default_value'] = factor.default_value.id
+        factors[factor.id] = factor_dict
     measures = {}
     for measure_id, measure in experiment.measures.items():
         measures[measure_id] = {
@@ -391,6 +394,18 @@ def _get_measures_paths(measures):
 
 
 def _trial_info(trial):
+    values = dict((value.factor.id, value.id) for value in trial.factor_values)
+    block_values = dict((value.factor.id, value.id) for value in trial.block.factor_values)
+    default_values = {}
+    missing_values = []
+    for factor in trial.experiment.factors:
+        if factor.id not in values and factor.id not in block_values:
+            if factor.default_value:
+                default_values[factor.id] = factor.default_value.id
+            else:
+                missing_values.append(factor.id)
+
+
     return {
         'number': trial.number,
         'block_number': trial.block.number,
@@ -398,8 +413,10 @@ def _trial_info(trial):
         'run_id': trial.run.id,
         'practice': trial.block.practice,
         'measure_block_number': trial.block.measure_block_number(),
-        'values': dict((value.factor.id, value.id) for value in trial.factor_values),
-        'block_values': dict((value.factor.id, value.id) for value in trial.block.factor_values),
+        'values': values,
+        'block_values': block_values,
+        'default_values': default_values,
+        'missing_values': missing_values,
         'total': trial.block.length(),
         'completion_date': trial.completion_date
     }

@@ -89,7 +89,6 @@ class Run(db.Model):
         db.UniqueConstraint("_experiment_db_id", "id"),
     )
 
-
     def __init__(self, id, experiment):
         self.id = id
         self.experiment = experiment
@@ -322,6 +321,9 @@ class Trial(db.Model):
 class Factor(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
+    _default_value_db_id = db.Column(db.Integer, db.ForeignKey('factor_value._db_id',
+                                                               use_alter=True,
+                                                               name="fk_default_value"))
 
     id = db.Column(db.String(80), nullable=False)
     name = db.Column(db.String(200))
@@ -329,22 +331,25 @@ class Factor(db.Model):
     kind = db.Column(db.String(20))
     tag = db.Column(db.String(80))
 
-    values = db.relationship('FactorValue',
-                             backref=db.backref('factor', lazy='joined'),
-                             lazy='joined',
-                             cascade="all, delete-orphan")
+    default_value = db.relationship('FactorValue',
+                                    uselist=False,
+                                    post_update=True,
+                                    foreign_keys=[_default_value_db_id])
 
     __table_args__ = (
         db.UniqueConstraint("id", "_experiment_db_id"),
     )
 
-    def __init__(self, id, values, type, name=None, kind=None, tag=None):
+    def __init__(self, id, values, type, name=None, kind=None, tag=None, default_value=None):
+        if default_value is not None and default_value not in values:
+            raise "Factor default value must be in values"
         self.id = id
         self.name = name
         self.type = type
         self.kind = kind
         self.tag = tag
         self.values = values
+        self.default_value = default_value
 
     def __repr__(self):
         return "<{} {} (name: '{}', experiment id: {}, type: {}, kind: {}, tag: {}>" \
@@ -364,9 +369,21 @@ class FactorValue(db.Model):
     id = db.Column(db.String(40), nullable=False)
     name = db.Column(db.String(200))
 
+    factor = db.relationship('Factor',
+                             backref=db.backref('values',
+                                                lazy='joined'),
+                             single_parent=True,
+                             lazy='joined',
+                             foreign_keys=[_factor_db_id],
+                             cascade="all, delete-orphan")
+
     __table_args__ = (
         db.UniqueConstraint("id", "_factor_db_id"),
     )
+
+    @property
+    def is_default(self):
+        return self.factor.default_value is self
 
     def __init__(self, id, name=None):
         self.id = id
@@ -476,11 +493,7 @@ class MeasureValue(AbstractConcreteBase, db.Model):
                 raise NoResultFound("Cannot find target measure: " + measure)
 
         self.measure = measure
-        # convert boolean into string repr
-        if isinstance(value, bool):
-            self.value = {True: 'true', False: 'false'}.get(value, value)
-        else:
-            self.value = value
+        self.value = value
 
     def __repr__(self):
         return "<{} of {} (value: '{}')>".format(self.__class__.__name__,
@@ -490,6 +503,7 @@ class MeasureValue(AbstractConcreteBase, db.Model):
 
 class MeasureLevelError(ValueError):
     pass
+
 
 class TrialMeasureValue(MeasureValue):
     __tablename__ = 'trial_measure_value'
