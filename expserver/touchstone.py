@@ -5,6 +5,16 @@ from xml.dom import pulldom
 from model import Experiment, Run, Trial, Factor, FactorValue, Block, db, Measure
 
 
+def update_experiment(touchstone_file):
+    exp_dom = ElementTree.parse(touchstone_file).getroot()
+    xp_id = parse_experiment_id(touchstone_file)
+    experiments = Experiment.query.filter_by(id=xp_id).all()
+    if len(experiments) > 0:
+        print("Update experiment {}.".format(xp_id))
+        return _parse_experiment(exp_dom, experiments[0], True)
+    else:
+        raise "The experiment {} does not exist".format(xp_id)
+
 def create_experiment(touchstone_file):
     exp_dom = ElementTree.parse(touchstone_file).getroot()
     return _parse_experiment(exp_dom)
@@ -21,16 +31,24 @@ def _nonize_string(string):
     return None if string == '' else string
 
 
-def _parse_experiment(dom):
+def _parse_experiment(dom, exp=None, verbose=False):
     measures = (_parse_measure(measure_dom) for measure_dom in dom.findall('measure'))
-    exp = Experiment(id=dom.get('id'),
-                     name=_nonize_string(dom.get('name')),
-                     factors=[_parse_factor(factor_dom) for factor_dom in dom.findall('factor')],
-                     author=dom.get('author'),
-                     measures=dict((measure.id, measure) for measure in measures),
-                     description=_nonize_string(dom.get('description')))
+    exp = exp or Experiment(id=dom.get('id'),
+                            name=_nonize_string(dom.get('name')),
+                            factors=[_parse_factor(factor_dom) for factor_dom in dom.findall('factor')],
+                            author=dom.get('author'),
+                            measures=dict((measure.id, measure) for measure in measures),
+                            description=_nonize_string(dom.get('description')))
+
+    run_ids = set(run.id for run in exp.runs)
     for run_dom in dom.findall('run'):
-        _parse_run(run_dom, exp)
+        run_id = run_dom.get('id')
+        if not run_id in run_ids:
+            if verbose:
+                print('Creation of run {}.'.format(run_id))
+            _parse_run(run_dom, exp)
+        else:
+            print('Run {} already present.'.format(run_id))
     return exp
 
 
@@ -43,7 +61,6 @@ def _parse_factor(dom):
         default = v_dom.get('default')
         if default in ['true', '1', 'True', 'yes', 'Yes']:
             default_value = value
-
 
     return Factor(id=dom.get('id'),
                   name=_nonize_string(dom.get('name')),
@@ -120,3 +137,23 @@ def _parse_trial(dom, block):
                   number=int(num) if num is not None else None,
                   values=values)
     return trial
+
+
+if __name__ == '__main__':
+
+    def main():
+        from flask import Flask
+        import default_settings
+
+        # app creation
+        app = Flask(__name__.split('.')[0])
+        app.config['SQLALCHEMY_DATABASE_URI'] = default_settings.SQLALCHEMY_DATABASE_URI
+
+        db.init_app(app)
+        db.app = app
+
+        with app.test_request_context():
+            update_experiment(default_settings.TOUCHSTONE_FILE)
+            db.session.commit()
+
+    main()
