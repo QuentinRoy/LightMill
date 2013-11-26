@@ -1,9 +1,8 @@
 __author__ = 'Quentin Roy'
 
-# must be imported (even if not use)
-from run import app
-from itertools import chain
-from model import *
+# app must be imported (even if not use)
+from expserver.run import app
+from expserver.model import *
 import os
 from csv import DictWriter
 
