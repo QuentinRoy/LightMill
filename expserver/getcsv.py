@@ -6,6 +6,45 @@ from expserver.model import *
 import os
 from csv import DictWriter
 
+FIELD_DICT = {
+    'header': {'practice': u'Practice', 'xpId': u'Experiment Id', 'trialNum': u'Trial Number', 'runId': u'Run Id',
+               'blockNum': u'Block Number'},
+    'measure': {u'correctRotDir': u'Correct Rotation Direction', u'lastPoint.y': u'Last Point y',
+                u'lastPoint.x': u'Last Point x', u'durations.trial': u'Trial Duration',
+                u'timestamps.trialInitEnd': u'Trial Init End TimeStamp', u'rotDir': u'Rotation Direction (measure)',
+                u'endDir': u'End Direction (measure)',
+                u'timestamps.drawingEnd': u'Drawing End TimeStamp',
+                u'circleFitStdDev': u'Circle Fit Standard Deviation', u'revolutions': u'Revolutions',
+                u'endAngleError': u'End Angle Error', u'circle.radius': u'Circle Radius',
+                u'timestamps.trialStart': u'Trial Start TimeStamp', u'durations.init': u'Trial Initialization Duration',
+                u'timestamps.drawingStart': u'Drawing Start TimeStamp',
+                u'startAngle': u'Start Angle (measure)', u'endDirError': u'End Direction Error',
+                u'firstPoint.x': u'First Point x', u'firstPoint.y': u'First Point y',
+                u'endAngle': u'End Angle (measure)',
+                u'durations.drawing': u'Drawing Duration',
+                u'timestamps.executionEnd': u'Execution End TimeStamp',
+                u'durations.reaction': u'Reaction Duration', u'circle.center.x': u'Circle Center x',
+                u'circle.center.y': u'Circle Center y', u'startAngleError': u'Start Angle Error',
+                u'revolutionError': u'Revolution Error', u'timestamps.trialEnd': u'Trial End TimeStamp',
+                u'timestamps.trialInitStart': u'Trial Init Start TimeStamp',
+                u'timestamps.executionStart': u'Execution Start TimeStamp'},
+    'factor': {u'revolutions': u'Revolution Number', u'form': u'Form to draw', u'endAngle': u'End Angle (factor)',
+               u'rotDir': u'Rotation Direction (factor)', u'startAngle': u'Start Angle (factor)',
+               u'endDir': u'End Direction (factor)', u'size': u'Size'}}
+
+FIELD_NAMES = [u'Experiment Id', u'Practice', u'Trial Number', u'Run Id', u'Block Number', u'Revolution Number',
+               u'Form to draw', u'End Angle (factor)', u'Rotation Direction (factor)', u'Start Angle (factor)',
+               u'End Direction (factor)', u'Size', u'Correct Rotation Direction', u'Last Point y', u'Last Point x',
+               u'Trial Duration', u'Trial Init End TimeStamp', u'Rotation Direction (measure)',
+               u'End Direction (measure)', u'Drawing End TimeStamp',
+               u'Circle Fit Standard Deviation', u'Revolutions', u'End Angle Error', u'Circle Radius',
+               u'Trial Start TimeStamp', u'Trial Initialization Duration',
+               u'Drawing Start TimeStamp', u'Start Angle (measure)',
+               u'End Direction Error', u'First Point x', u'First Point y', u'End Angle (measure)', u'Drawing Duration',
+               u'Execution End TimeStamp', u'Reaction Duration', u'Circle Center x',
+               u'Circle Center y', u'Start Angle Error', u'Revolution Error', u'Trial End TimeStamp',
+               u'Trial Init Start TimeStamp', u'Execution Start TimeStamp']
+
 
 def get_trial_dict_row(trial, fields):
     print('  Trial {} of block {}'.format(trial.number, trial.block.number))
@@ -18,12 +57,12 @@ def get_trial_dict_row(trial, fields):
     }
     for factor_value in trial.iter_all_factor_values():
         factor = factor_value.factor
-        factor_name = fields['factor'][factor.id]['final_name']
+        factor_name = FIELD_DICT['factor'][factor.id] if FIELD_DICT else fields['factor'][factor.id]['final_name']
         value_name = factor_value.name or factor_value.id
         row[factor_name] = convert_bool(value_name)
     for measure_value in trial.measure_values:
         measure = measure_value.measure
-        measure_name = fields['measure'][measure.id]['final_name']
+        measure_name = FIELD_DICT['measure'][measure.id] if FIELD_DICT else fields['measure'][measure.id]['final_name']
         row[measure_name] = convert_bool(measure_value.value)
     return row
 
@@ -61,13 +100,13 @@ def get_final_name(field):
     for c_type, c_num in field['conflicts'].iteritems():
         if c_num > 0:
             if c_type == field['type']:
-                return '{field_name} ({field_type} {field_id})'.format(field_name=field['name'],
-                                                                       field_type=field['type'],
-                                                                       field_id=field['id'])
+                return u'{field_name} ({field_type} {field_id})'.format(field_name=field['name'],
+                                                                        field_type=field['type'],
+                                                                        field_id=field['id'])
                 break
             else:
-                final_name = '{field_name} ({field_type})'.format(field_name=field['name'],
-                                                                  field_type=field['type'])
+                final_name = u'{field_name} ({field_type})'.format(field_name=field['name'],
+                                                                   field_type=field['type'])
     return final_name
 
 
@@ -77,11 +116,11 @@ def create_fields(experiment):
             self.id = h_id
             self.name = name
 
-    headers = {'xpId': 'Experiment Id',
-               'runId': 'Run Id',
-               'blockNum': 'Block Number',
-               'trialNum': 'Trial Number',
-               'practice': 'Practice'}
+    headers = {'xpId': u'Experiment Id',
+               'runId': u'Run Id',
+               'blockNum': u'Block Number',
+               'trialNum': u'Trial Number',
+               'practice': u'Practice'}
 
     fields = {'header': list(Header(h_id, h_name) for h_id, h_name in headers.iteritems()),
               'factor': sorted(experiment.factors, key=lambda x: x.id),
@@ -96,28 +135,71 @@ def create_fields(experiment):
     return field_info
 
 
-def create_logger(experiment, target_path):
-    fields = create_fields(experiment)
+def get_event_field_names(experiment):
+    fields = [u'Experiment Id', u'Run Id', u'Block Number', u'Trial Number', u'Practice']
+
+    for measure in experiment.measures.itervalues():
+        if measure.event_level:
+            fields.append(measure.name or measure.id)
+
+    return fields
+
+
+def create_trial_logger(experiment, target_path):
+    fields = None
+
+    if not FIELD_NAMES:
+        create_fields(experiment)
+
+        #    field_dict = {}
+        for sub_fields in fields.itervalues():
+            for field in sub_fields.itervalues():
+            #            field_type_names = field_dict.get(field['type'], {})
+            #            field_dict[field['type']] = field_type_names
+            #            field_type_names[field['id']] = field['final_name']
+                field_names.append(field['final_name'])
+
+                #    print(field_dict)
 
     target_file = open(target_path, 'w')
-
-    field_names = []
-    for sub_fields in fields.itervalues():
-        for field in sub_fields.itervalues():
-            field_names.append(field['final_name'])
-
-
-    dict_writer = DictWriter(target_file, field_names)
+    dict_writer = DictWriter(target_file, FIELD_NAMES if FIELD_NAMES else field_names)
     dict_writer.writeheader()
     return fields, dict_writer
 
 
-def run_csv_export(run, logger, fields):
+def run_csv_export(run, trial_logger, events_log_dir, fields):
     print('Export Run {}:'.format(run.id))
+
+    field_names = get_event_field_names(run.experiment)
+    if not os.path.exists(events_log_dir):
+        os.makedirs(events_log_dir)
 
     for trial in run.trials:
         row = get_trial_dict_row(trial, fields)
-        logger.writerow(row)
+        trial_logger.writerow(row)
+
+        target_path = os.path.join(events_log_dir, "{}-{}.csv".format(trial.block.number, trial.number))
+        target_file = open(target_path, 'w')
+        events_logger = DictWriter(target_file, field_names)
+        events_logger.writeheader()
+
+        for event in trial.events:
+            row = get_event_row(trial, event)
+            events_logger.writerow(row)
+
+
+def get_event_row(trial, event):
+    fields = {
+        u'Experiment Id': trial.experiment.id,
+        u'Run Id': trial.run.id,
+        u'Block Number': trial.block.measure_block_number(),
+        u'Trial Number': trial.number,
+        u'Practice': trial.block.practice
+    }
+    for measure_value in event.measure_values.itervalues():
+        measure = measure_value.measure
+        fields[measure.name or measure.id] = measure_value.value
+    return fields
 
 
 class MultiLogger:
@@ -130,11 +212,12 @@ class MultiLogger:
 
 
 def xp_csv_export(experiment, target_dir):
-    fields, xp_logger = create_logger(experiment, target_dir + '.csv')
+    fields, xp_logger = create_trial_logger(experiment, target_dir + '.csv')
     for run in experiment.runs:
         if run.started():
-            _, run_logger = create_logger(experiment, os.path.join(target_dir, run.id + '.csv'))
-            run_csv_export(run, MultiLogger([xp_logger, run_logger]), fields)
+            _, run_logger = create_trial_logger(experiment, os.path.join(target_dir, run.id + '.csv'))
+            event_dir = os.path.join(target_dir, run.id)
+            run_csv_export(run, MultiLogger([xp_logger, run_logger]), event_dir, fields)
 
 
 def csv_export(target_dir):
