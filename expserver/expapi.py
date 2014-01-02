@@ -356,23 +356,24 @@ def trial_props(experiment, run, block, trial):
             except MeasureLevelError:
                 msg = "Measure key '{}'(value: '{}') is not at the trial level.".format(measure_id, measure_value)
                 warnings.warn(msg, WrongMeasureKey)
-        event_num = 0
-        for event_measures in data['measures']['events']:
-            values = []
-            for measure_id, measure_value in _convert_measures(event_measures):
-                try:
-                    if measure_value is not None:
-                        values.append(EventMeasureValue(measure_value, measures[measure_id]))
-                except KeyError:
-                    msg = "Invalid event measure key: '{}' (value: '{}')".format(measure_id, measure_value)
-                    warnings.warn(msg, WrongMeasureKey)
+        if 'measures' in data and 'events' in data['measures']:
+            event_num = 0
+            for event_measures in data['measures']['events']:
+                values = []
+                for measure_id, measure_value in _convert_measures(event_measures):
+                    try:
+                        if measure_value is not None:
+                            values.append(EventMeasureValue(measure_value, measures[measure_id]))
+                    except KeyError:
+                        msg = "Invalid event measure key: '{}' (value: '{}')".format(measure_id, measure_value)
+                        warnings.warn(msg, WrongMeasureKey)
 
-                except MeasureLevelError:
-                    msg = "Measure key '{}' (value: '{}') is not at the event level.".format(measure_id, measure_value)
-                    warnings.warn(msg, WrongMeasureKey)
+                    except MeasureLevelError:
+                        msg = "Measure key '{}' (value: '{}') is not at the event level.".format(measure_id, measure_value)
+                        warnings.warn(msg, WrongMeasureKey)
 
-            Event(values, event_num, trial)
-            event_num += 1
+                Event(values, event_num, trial)
+                event_num += 1
         trial.set_completed()
         db.session.commit()
 
