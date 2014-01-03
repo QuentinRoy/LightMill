@@ -33,8 +33,7 @@ def get_app(database):
     return flask_app
 
 
-def calculateDuration(experiment, start_measure, end_measure, duration_measure, update=False):
-
+def calculate_duration(experiment, start_measure, end_measure, duration_measure, update=False):
     for run in experiment.runs:
         for trial in run.trials:
             # print('trial {}'.format(trial.number))
@@ -51,7 +50,6 @@ def calculateDuration(experiment, start_measure, end_measure, duration_measure, 
                         result_val[0].value = exec_duration
                 else:
                     trial.measure_values.append(TrialMeasureValue(exec_duration, experiment.measures[duration_measure]))
-
     db.session.commit()
 
 
@@ -60,4 +58,4 @@ if __name__ == '__main__':
     app = get_app(database)
     xp = Experiment.query.first()
     update_measure(xp, id='durations.execution', name="Execution Duration", event_level=False)
-    # calculateDuration(xp, 'timestamps.executionStart', 'timestamps.drawingStart', 'durations.reaction', update = True)
+    # calculate_duration(xp, 'timestamps.executionStart', 'timestamps.drawingStart', 'durations.reaction', update = True)
