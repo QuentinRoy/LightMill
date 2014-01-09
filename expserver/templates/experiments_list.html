@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Experiments list</title>
+
+    {% block styles %}
+    {% endblock %}
+
+</head>
+
+<body>
+
+<h1>Experiments list</h1>
+
+
+<ul id="xp-list">
+    {% for xp in experiments %}
+        <li><a href="/experiment/{{xp.id}}/status">{{ xp.name }}</a></li>
+    {% endfor %}
+</ul>
+</body>

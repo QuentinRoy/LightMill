@@ -132,8 +132,13 @@ def allow_origin(response):
 
 @exp_api.route('/experiments')
 def experiments_list():
-    experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
-    return jsonify(experiments)
+    json_requested = 'json' in request.args and request.args['json'].lower() == 'true' or request.is_xhr
+    if json_requested:
+        experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
+        return jsonify(experiments)
+    else:
+        return render_template('experiments_list.html',
+                               experiments=Experiment.query.all())
 
 
 @exp_api.route('/')
@@ -210,7 +215,7 @@ def expe_runs(experiment):
         runs = experiment.runs.all()
         return render_template('xp_status.html',
                                runs=runs,
-                               experiment = experiment,
+                               experiment=experiment,
                                completed_nb=len([run for run in runs if run.completed()]),
                                total_nb=len(runs))
 
