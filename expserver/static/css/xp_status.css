@@ -43,7 +43,11 @@ body{
     background-color: #FFCDA9;
 }
 
-#table-status tr.run-row[class~="run-completed"]:hover, #table-status tr.run-row[class~="run-started"]:hover {
+#table-status tr.run-row:hover {
     cursor: pointer;
     color:white;
+}
+
+#table-status tr.run-row[class~="run-unstarted"][class~='odd']:hover {
+    color:lightgray;
 }
