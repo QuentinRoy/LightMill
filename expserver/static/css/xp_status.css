@@ -1,0 +1,49 @@
+body{
+    text-align: center;
+
+}
+
+#table-status {
+    margin: 20px auto;
+    width: 100%;
+    max-width: 500px;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+#table-status td, #table-status th {
+    padding: 3px 5px;
+}
+
+#table-status tr.run-row .run-id {
+    text-align: left;
+}
+
+#table-status tr.run-row .run-status {
+    text-align: right;
+}
+
+#table-status tr.run-row[class~="run-unstarted"][class~='even'] {
+    background-color: #E3E3E3;
+}
+
+#table-status tr.run-row[class~="run-completed"] {
+    background-color: #BDE9C5;
+}
+
+#table-status tr.run-row[class~="run-completed"][class~='odd'] {
+    background-color: #C5F3CC;
+}
+
+#table-status tr.run-row[class~="run-started"] {
+    background-color: #EDBF9D;
+}
+
+#table-status tr.run-row[class~="run-started"][class~='odd'] {
+    background-color: #FFCDA9;
+}
+
+#table-status tr.run-row[class~="run-completed"]:hover, #table-status tr.run-row[class~="run-started"]:hover {
+    cursor: pointer;
+    color:white;
+}

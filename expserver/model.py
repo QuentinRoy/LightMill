@@ -133,6 +133,14 @@ class Run(db.Model):
     def get_block(self, block_number):
         return self.blocks.filter(Block.number == block_number).one()
 
+    def status(self):
+        if self.completed():
+            return "completed"
+        elif self.started():
+            return "started"
+        else:
+            return "unstarted"
+
 
 def _free_number(number_list):
     numbers = sorted(number_list)

@@ -194,16 +194,25 @@ def sorted_measures(experiment):
 
 @exp_api.route('/experiment/<experiment>/status')
 def expe_runs(experiment):
-    start = time()
-    runs_props = {}
-    for run in experiment.runs:
-        runs_props[run.id] = {
-            'completed': run.completed(),
-            'started': run.started(),
-            'locked': run.locked
-        }
-    runs_props['req_duration'] = time() - start
-    return jsonify(runs_props)
+    json_requested = 'json' in request.args and request.args['json'].lower() == 'true' or request.is_xhr
+    if json_requested:
+        start = time()
+        runs_props = {}
+        for run in experiment.runs:
+            runs_props[run.id] = {
+                'completed': run.completed(),
+                'started': run.started(),
+                'locked': run.locked
+            }
+        runs_props['req_duration'] = time() - start
+        return jsonify(runs_props)
+    else:
+        runs = experiment.runs.all()
+        return render_template('xp_status.html',
+                               runs=runs,
+                               experiment = experiment,
+                               completed_nb=len([run for run in runs if run.completed()]),
+                               total_nb=len(runs))
 
 
 @exp_api.route('/experiment/<experiment>/next_run')
@@ -369,7 +378,8 @@ def trial_props(experiment, run, block, trial):
                         warnings.warn(msg, WrongMeasureKey)
 
                     except MeasureLevelError:
-                        msg = "Measure key '{}' (value: '{}') is not at the event level.".format(measure_id, measure_value)
+                        msg = "Measure key '{}' (value: '{}') is not at the event level.".format(measure_id,
+                                                                                                 measure_value)
                         warnings.warn(msg, WrongMeasureKey)
 
                 Event(values, event_num, trial)
@@ -405,7 +415,6 @@ def _trial_info(trial):
                 default_values[factor.id] = factor.default_value.id
             else:
                 missing_values.append(factor.id)
-
 
     return {
         'number': trial.number,
@@ -517,7 +526,7 @@ def result_socket(experiment, run):
             for factor_id in factors:
                 factors[factor_id] = factors[factor_id].id
 
-            print('WebSocket send')
+            # print('WebSocket send')
             func_message = json.dumps(trial_info)
             ws.send(func_message)
 
