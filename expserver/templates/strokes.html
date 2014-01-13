@@ -46,7 +46,7 @@
 
             function adaptCanvasSize(canvas) {
                 var baseFrameWidth = 768,
-                    baseFrameHeight = 1024, // TODO: this does not take into account the safari bar
+                    baseFrameHeight = 928,
                     margin = 10,
                     maxWidth = $(window).width() - margin * 2,
                     maxHeight = $(window).height() - margin * 2,
@@ -56,7 +56,6 @@
                     adaptedH = width * baseFrameHeight / baseFrameWidth,
                     canvasWidth = Math.min(adaptedW, width),
                     canvasHeight = Math.min(adaptedH, height);
-
 
                 canvas.width = baseFrameWidth;
                 canvas.height = baseFrameHeight;
