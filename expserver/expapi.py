@@ -395,6 +395,20 @@ def trial_props(experiment, run, block, trial):
     return jsonify(_trial_info(trial))
 
 
+@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/stroke')
+def trial_stroke(experiment, run, block, trial):
+    events = []
+    for event in trial.events:
+        event_obj = {}
+        for measure_value in event.measure_values.itervalues():
+            event_obj[measure_value.measure.id] = measure_value.value
+        events.append(event_obj)
+    return render_template('strokes.html',
+                    trial=trial,
+                    dumps = json.dumps,
+                    trial_events=events)
+
+
 def _convert_measures(measures):
     for measure_path, value in _get_measures_paths(measures):
         yield '.'.join(measure_path), value

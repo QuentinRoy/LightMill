@@ -1,5 +1,18 @@
 $(function () {
 
+    var sKeyPressed = false;
+
+    $(window).keydown(function (evt) {
+        if (evt.which == 83) { // s key
+            sKeyPressed = true;
+        }
+    }).keyup(function (evt) {
+            if (evt.which == 83) { // s key
+                sKeyPressed = false;
+            }
+        });
+
+
     function realTopScroll(scroll) {
         scroll = scroll || $(window).scrollTop();
         if (scroll < 0) return 0;
@@ -114,11 +127,13 @@ $(function () {
 
 
         _createRowLink: function (row) {
-            var eventsUrl = "/trial/" + CONFIG.experiment_id + '/' + CONFIG.run_id + '/' + row.attr('block-number')
-                + '/' + row.attr('trial-number') + '/events';
+            var trialUrl = "/trial/" + CONFIG.experiment_id + '/' + CONFIG.run_id + '/' + row.attr('block-number')
+                    + '/' + row.attr('trial-number'),
+                eventsUrl = trialUrl + '/events',
+                strokeUrl = trialUrl + '/stroke';
             row.css('cursor', 'pointer');
             row.click(function () {
-                window.open(eventsUrl);
+                window.open(sKeyPressed ? strokeUrl : eventsUrl, '_blank');
             });
         },
 
