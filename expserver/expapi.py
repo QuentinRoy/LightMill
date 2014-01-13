@@ -403,10 +403,11 @@ def trial_stroke(experiment, run, block, trial):
         for measure_value in event.measure_values.itervalues():
             event_obj[measure_value.measure.id] = measure_value.value
         events.append(event_obj)
+
     return render_template('strokes.html',
-                    trial=trial,
-                    dumps = json.dumps,
-                    trial_events=events)
+                           trial=trial,
+                           dumps=json.dumps,
+                           trial_events=events)
 
 
 def _convert_measures(measures):

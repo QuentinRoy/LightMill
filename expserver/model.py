@@ -141,6 +141,22 @@ class Run(db.Model):
         else:
             return "unstarted"
 
+    def previous(self):
+        prev = None
+        for run in self.experiment.runs.order_by(Run.id):
+            if run == self:
+                return prev
+            else:
+                prev = run
+
+    def next(self):
+        prev = None
+        for run in self.experiment.runs.order_by(Run.id):
+            if prev == self:
+                return run
+            else:
+                prev = run
+
 
 def _free_number(number_list):
     numbers = sorted(number_list)
@@ -273,21 +289,26 @@ class Trial(db.Model):
         return self.completion_date is not None
 
     def set_completed(self):
-        previous = self.previous_trial()
+        previous = self.previous()
         if self.completed:
             raise ExperimentProgressError("Trial already completed.")
-        if previous is not None and not self.previous_trial().completed:
+        if previous is not None and not previous.completed:
             raise ExperimentProgressError("Cannot complete trial {}: previous trial is not completed yet. "
                                           "Trials must be completed sequentially.".format(repr(self)))
         self.completion_date = datetime.today()
 
-    def previous_trial(self):
-        if self.number <= 0:
-            if self.block.number > 0:
-                block = Block.query.get_by_number(self.block.number - 1, self.run.id, self.experiment.id)
-                return block.trials.filter(Trial.number == block.length() - 1).one()
-        else:
+    def previous(self):
+        if self.number > 0:
             return Trial.query.get_by_number(self.number - 1, self.block.number, self.run.id, self.experiment.id)
+        elif self.block.number > 0:
+            block = Block.query.get_by_number(self.block.number - 1, self.run.id, self.experiment.id)
+            return block.trials.filter(Trial.number == block.length() - 1).one()
+
+    def next(self):
+        if self.number + 1 < self.block.length():
+            return Trial.query.get_by_number(self.number + 1, self.block.number, self.run.id, self.experiment.id)
+        elif self.block.number + 1 < self.run.block_count():
+            return Trial.query.get_by_number(0, self.block.number + 1, self.run.id, self.experiment.id)
 
     @property
     def experiment(self):
