@@ -73,7 +73,7 @@ def create_trial_fields(experiment):
                   (measure for measure in experiment.measures.itervalues() if measure.trial_level),
                   key=lambda x: x.id)}
 
-    field_info = OrderedDict((type_name, OrderedDict()) for type_name in fields)
+    field_info = OrderedDict((type_name, OrderedDict()) for type_name in ['header', 'factor', 'measure'])
 
     # field info check for name conflicts and create field final names
     for field in iter_field_info(fields):
@@ -95,7 +95,7 @@ def create_event_fields(experiment):
                   (measure for measure in experiment.measures.itervalues() if measure.event_level),
                   key=lambda x: x.id)}
 
-    field_info = OrderedDict((type_name, OrderedDict()) for type_name in fields)
+    field_info = OrderedDict((type_name, OrderedDict()) for type_name in ['header', 'measure'])
 
     # field info check for name conflicts and create field final names
     for field in iter_field_info(fields):
@@ -140,7 +140,7 @@ def get_trial_row(trial, fields):
     row = {
         u'Experiment Name': trial.experiment.name or trial.experiment.id,
         u'Run Id': trial.run.id,
-        u'Block Number': trial.block.measure_block_number(),
+        u'Block Number': trial.block.number,
         u'Trial Number': trial.number,
         u'Practice': convert_bool(trial.block.practice)
     }
@@ -161,7 +161,7 @@ def get_event_row(event, fields):
     row = {
         u'Experiment Name': trial.experiment.name or trial.experiment.id,
         u'Run Id': trial.run.id,
-        u'Block Number': trial.block.measure_block_number(),
+        u'Block Number': trial.block.number,
         u'Trial Number': trial.number,
         u'Practice': convert_bool(trial.block.practice),
         u'Event Number': event.number
