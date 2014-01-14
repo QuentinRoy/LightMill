@@ -12,6 +12,7 @@ def add_xp_measure(xp, measure_id, measure_type, trial_level, event_level, measu
 
 
 def update_measure(xp, id, type=None, trial_level=None, event_level=None, name=None):
+    print("Measure {}'s update".format(id))
     m = xp.measures[id]
     if trial_level is not None:
         m.trial_level = trial_level
@@ -31,14 +32,19 @@ def get_app(database):
     db.app = flask_app
     return flask_app
 
-
-def add_trials(run, number):
+def set_trials_count(run, number):
     for block in run.blocks:
-        num = len(block.trials.all())
-        for _ in range(number):
-            t = Trial(block, values=[], number=num)
-            block.trials.append(t)
-            num += 1
+        trials = block.trials.all()
+        n = len(trials)
+        if n < number:
+            for _ in range(number - n):
+                t = Trial(block, values=[])
+                db.session.add(t)
+        elif n > number:
+            for t in trials:
+                if t.number > number:
+                    db.session.delete(t)
+    # db.session.flush()
     db.session.commit()
 
 
@@ -67,9 +73,10 @@ if __name__ == '__main__':
     app = get_app(database)
     xp = Experiment.query.first()
 
-    # update_measure(xp, id='durations.execution', name="Execution Duration", event_level=False)
+    update_measure(xp, id='timestamps.executionStart', name="Execution Start TimeStamp")
+    update_measure(xp, id='timestamps.executionEnd', name="Execution End TimeStamp")
     # calculate_duration(xp, 'timestamps.executionStart', 'timestamps.drawingStart', 'durations.reaction', update = True)
 
     # for run in xp.runs:
-    #    if not run.completed():
-    #        add_trials(run, 7)
+    #    if not run.started():
+    #        set_trials_count(run, 10)
