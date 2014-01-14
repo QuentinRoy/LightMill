@@ -12,7 +12,6 @@ def add_xp_measure(xp, measure_id, measure_type, trial_level, event_level, measu
 
 
 def update_measure(xp, id, type=None, trial_level=None, event_level=None, name=None):
-    print("Measure {}'s update".format(id))
     m = xp.measures[id]
     if trial_level is not None:
         m.trial_level = trial_level
@@ -23,6 +22,7 @@ def update_measure(xp, id, type=None, trial_level=None, event_level=None, name=N
     if type is not None:
         m.type = type
     db.session.commit()
+    print("Measure {}  updated".format(id))
 
 
 def get_app(database):
@@ -75,6 +75,8 @@ if __name__ == '__main__':
 
     update_measure(xp, id='timestamps.executionStart', name="Execution Start TimeStamp")
     update_measure(xp, id='timestamps.executionEnd', name="Execution End TimeStamp")
+    update_measure(xp, id='circle.center.y', name="Circle Center y")
+    update_measure(xp, id='circle.center.x', name="Circle Center x")
     # calculate_duration(xp, 'timestamps.executionStart', 'timestamps.drawingStart', 'durations.reaction', update = True)
 
     # for run in xp.runs:
