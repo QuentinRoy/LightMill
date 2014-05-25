@@ -33,6 +33,9 @@ def _nonize_string(string):
 
 def _parse_experiment(dom, exp=None, verbose=False):
     measures = (_parse_measure(measure_dom) for measure_dom in dom.findall('measure'))
+    id = dom.get('id')
+    if not id:
+        raise "No experiment id."
     exp = exp or Experiment(id=dom.get('id'),
                             name=_nonize_string(dom.get('name')),
                             factors=[_parse_factor(factor_dom) for factor_dom in dom.findall('factor')],
