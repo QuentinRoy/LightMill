@@ -267,7 +267,7 @@ class Trial(db.Model):
 
     factor_values = db.relationship('FactorValue', secondary=trial_factor_values)
     number = db.Column(db.Integer, nullable=False)
-    completion_date = db.Column(db.DateTime, index=True)
+    completion_date = db.Column(db.DateTime)
     measure_values = db.relationship('TrialMeasureValue',
                                      cascade="all, delete-orphan",
                                      backref=db.backref('trial'),
@@ -488,7 +488,7 @@ class Measure(db.Model):
 
 class Event(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False, index=True)
+    _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False)
     number = db.Column(db.Integer, nullable=False)
     measure_values = db.relationship('EventMeasureValue',
                                      cascade="all, delete-orphan",
@@ -513,7 +513,7 @@ class MeasureValue(AbstractConcreteBase, db.Model):
 
     @declared_attr
     def _measure_db_id(cls):
-        return db.Column(db.Integer, db.ForeignKey(Measure._db_id), nullable=False, index=True)
+        return db.Column(db.Integer, db.ForeignKey(Measure._db_id), nullable=False)
 
     value = db.Column(db.Text, nullable=False)
 
@@ -548,8 +548,8 @@ class TrialMeasureValue(MeasureValue):
     _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False)
 
     __table_args__ = (
-        # db.UniqueConstraint("_measure_db_id", "_trial_db_id"),
-        db.Index('index_trial_measure_value', '_measure_db_id', '_trial_db_id', unique=True),
+        db.UniqueConstraint("_measure_db_id", "_trial_db_id"),
+ #       db.Index('index_trial_measure_value', '_measure_db_id', '_trial_db_id', unique=True),
     )
 
     def __init__(self, *args, **kwargs):
@@ -565,8 +565,8 @@ class EventMeasureValue(MeasureValue):
     _event_db_id = db.Column(db.Integer, db.ForeignKey(Event._db_id), nullable=False)
 
     __table_args__ = (
-        # db.UniqueConstraint("_measure_db_id", "_event_db_id"),
-        db.Index('index_event_measure_value', '_measure_db_id', '_event_db_id', unique=True),
+        db.UniqueConstraint("_measure_db_id", "_event_db_id"),
+        # db.Index('index_event_measure_value', '_measure_db_id', '_event_db_id', unique=True),
     )
 
     def __init__(self, *args, **kwargs):

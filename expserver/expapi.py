@@ -10,6 +10,7 @@ import uuid
 from flask import jsonify, redirect, request, render_template, abort
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue, MeasureLevelError
+from model import Measure
 from time import time
 from collections import OrderedDict
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +21,8 @@ from sqlalchemy import event
 from geventwebsocket.exceptions import WebSocketError
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
+
+ADD_MISSING_MEASURES = True
 
 
 class UnknownElement(Exception):
@@ -343,6 +346,8 @@ def trial_props(experiment, run, block, trial):
         return resp
     elif request.method == 'POST':
         data = request.get_json()
+
+        # check the token
         token = data['token']
         if run.token is None:
             response = jsonify({
@@ -358,41 +363,79 @@ def trial_props(experiment, run, block, trial):
             })
             response.status_code = 405
             return response
-        measures = experiment.measures
 
-        for measure_id, measure_value in _convert_measures(data['measures']):
-            try:
-                if measure_id != 'events':
-                    trial.measure_values.append(TrialMeasureValue(measure_value, measures[measure_id]))
-            except KeyError:
-                msg = "Invalid trial measure key: '{}' (value: '{}')".format(measure_id, measure_value)
-                warnings.warn(msg, WrongMeasureKey)
-            except MeasureLevelError:
-                msg = "Measure key '{}'(value: '{}') is not at the trial level.".format(measure_id, measure_value)
-                warnings.warn(msg, WrongMeasureKey)
-        if 'measures' in data and 'events' in data['measures']:
+        measures = experiment.measures
+        data_measures = data['measures']
+        if data_measures:
+
+            # register trial measures
+            for measure_id, measure_value in _convert_measures(data_measures['trial']):
+                val = _get_measure_value(measure_id, measure_value, measure_level='trial', trial=trial)
+                trial.measure_values.append(val)
+
+
+            # register events
             event_num = 0
-            for event_measures in data['measures']['events']:
+            for event_measures in data_measures['events']:
                 values = []
                 for measure_id, measure_value in _convert_measures(event_measures):
-                    try:
-                        if measure_value is not None:
-                            values.append(EventMeasureValue(measure_value, measures[measure_id]))
-                    except KeyError:
-                        msg = "Invalid event measure key: '{}' (value: '{}')".format(measure_id, measure_value)
-                        warnings.warn(msg, WrongMeasureKey)
-
-                    except MeasureLevelError:
-                        msg = "Measure key '{}' (value: '{}') is not at the event level.".format(measure_id,
-                                                                                                 measure_value)
-                        warnings.warn(msg, WrongMeasureKey)
+                    if measure_value is not None:
+                        val = _get_measure_value(measure_id, measure_value, measure_level='event', trial=trial)
+                        values.append(val)
 
                 Event(values, event_num, trial)
                 event_num += 1
-        trial.set_completed()
-        db.session.commit()
+
+            trial.set_completed()
+            db.session.commit()
 
     return jsonify(_trial_info(trial))
+
+
+def _get_measure_value(measure_id, measure_value, measure_level, trial, add_measure_if_missing=ADD_MISSING_MEASURES):
+    if measure_level not in ('event', 'trial'):
+        raise ValueError("Unsupported measure level: " + measure_level)
+
+    experiment = trial.experiment
+    measures = experiment.measures
+    measure = measures.get(measure_id, None)
+
+    # case add unregistered measure types
+    if add_measure_if_missing:
+        if measure is None:
+            # create the new measure type
+            m_args = {
+                'id':measure_id,
+                'type':'unregistered'
+                }
+            m_args[measure_level+'_level'] = True
+            measure = Measure(**m_args)
+            # register it
+            experiment.measures[measure_id] = measure
+            # show a warning
+            msg = "Unknown {} measure key: '{}' (value: '{}'). New measure type registered.".format(measure_level, measure_id, measure_value)
+            warnings.warn(msg, WrongMeasureKey)
+
+        # if the level is incorrect
+        elif not getattr(measure, measure_level + '_level'):
+            # add the level
+            setattr(measure, measure_level + '_level', True)
+            # show a warning
+            msg = "Measure key '{}'(value: '{}') was not at the {} level. Trial level added.".format(measure_level, measure_id, measure_value)
+            warnings.warn(msg, WrongMeasureKey)
+        return TrialMeasureValue(measure_value, measure) if measure_level is 'trial' else EventMeasureValue(measure_value, measure)
+         
+
+    # case refuse incorrect measure types
+    elif measure is None:
+        msg = "Invalid {} measure key: '{}' (value: '{}')".format(measure_level, measure_id, measure_value)
+        warnings.warn(msg, WrongMeasureKey)
+    else:
+        try:
+            return TrialMeasureValue(measure_value, measure) if measure_level is 'trial' else EventMeasureValue(measure_value, measure)
+        except MeasureLevelError:
+            msg = "Measure key '{}'(value: '{}') is not at the {} level.".format(measure_id, measure_value, measure_level)
+            warnings.warn(msg, WrongMeasureKey)
 
 
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/stroke')
