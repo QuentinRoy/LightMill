@@ -7,7 +7,7 @@ from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
 import os
 import uuid
-from flask import jsonify, redirect, request, render_template, abort
+from flask import jsonify, redirect, request, render_template, abort, Response
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue, MeasureLevelError
 from model import Measure
@@ -424,7 +424,7 @@ def _get_measure_value(measure_id, measure_value, measure_level, trial, add_meas
             msg = "Measure key '{}'(value: '{}') was not at the {} level. Trial level added.".format(measure_level, measure_id, measure_value)
             warnings.warn(msg, WrongMeasureKey)
         return TrialMeasureValue(measure_value, measure) if measure_level is 'trial' else EventMeasureValue(measure_value, measure)
-         
+
 
     # case refuse incorrect measure types
     elif measure is None:
@@ -649,3 +649,12 @@ def _get_trial_measure(trial):
     for measure_value in trial.measure_values:
         measure_values[measure_value.measure.id] = measure_value.value
     return measure_values
+
+
+@exp_api.route('/run/<experiment>/<run>/trials')
+def run_trials(experiment, run):
+    trials = []
+    for trial in run.trials:
+        trials.append(_trial_info(trial))
+    return Response(json.dumps(trials),  mimetype='application/json')
+
