@@ -9,9 +9,9 @@ import os
 import uuid
 from flask import jsonify, redirect, request, render_template, abort, Response
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
-from model import Event, TrialMeasureValue, EventMeasureValue, MeasureLevelError
-from model import Measure
-from time import time
+from model import Event, TrialMeasureValue, EventMeasureValue
+from model import Measure, MeasureLevelError
+import time
 from collections import OrderedDict
 from sqlalchemy.exc import IntegrityError
 import json
@@ -152,7 +152,7 @@ def index():
 
 @exp_api.route('/experiment/<experiment>')
 def expe_props(experiment):
-    start = time()
+    start = time.time()
     factors = {}
     for factor in experiment.factors:
         factor_dict = {
@@ -178,7 +178,7 @@ def expe_props(experiment):
         'runs': [run.id for run in experiment.runs],
         'factors': factors,
         'measures': measures,
-        'req_duration': time() - start
+        'req_duration': time.time() - start
     }
     return jsonify(exp_data)
 
@@ -204,7 +204,7 @@ def sorted_measures(experiment):
 def expe_runs(experiment):
     json_requested = 'json' in request.args and request.args['json'].lower() == 'true' or request.is_xhr
     if json_requested:
-        start = time()
+        start = time.time()
         runs_props = {}
         for run in experiment.runs:
             runs_props[run.id] = {
@@ -212,7 +212,7 @@ def expe_runs(experiment):
                 'started': run.started(),
                 'locked': run.locked
             }
-        runs_props['req_duration'] = time() - start
+        runs_props['req_duration'] = time.time() - start
         return jsonify(runs_props)
     else:
         runs = experiment.runs.all()
@@ -469,7 +469,8 @@ def _get_measures_paths(measures):
 
 def _trial_info(trial):
     values = dict((value.factor.id, value.id) for value in trial.factor_values)
-    block_values = dict((value.factor.id, value.id) for value in trial.block.factor_values)
+    block_values = dict((value.factor.id, value.id)
+                        for value in trial.block.factor_values)
     default_values = {}
     missing_values = []
     for factor in trial.experiment.factors:
@@ -479,25 +480,31 @@ def _trial_info(trial):
             else:
                 missing_values.append(factor.id)
 
-    return {
+    answer = {
         'number': trial.number,
         'block_number': trial.block.number,
-        'experiment_id': trial.experiment.id,
-        'run_id': trial.run.id,
         'practice': trial.block.practice,
         'measure_block_number': trial.block.measure_block_number(),
         'values': values,
         'block_values': block_values,
         'default_values': default_values,
         'missing_values': missing_values,
-        'total': trial.block.length(),
-        'completion_date': trial.completion_date
+        'experiment_id': trial.experiment.id,
+        'run_id': trial.run.id,
+        'total': trial.block.length()
+
     }
+    if trial.completion_date:
+        answer['completion_date'] = int(time.mktime(
+            trial.completion_date.timetuple()))
+    return answer
 
 
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/events')
 def events(experiment, run, block, trial):
-    event_measures = sorted((measure for measure in experiment.measures.itervalues() if measure.event_level),
+    event_measures = sorted((measure for measure
+                            in experiment.measures.itervalues()
+                            if measure.event_level),
                             key=lambda x: x.id)
     return render_template('events.html',
                            trial=trial,
@@ -510,14 +517,17 @@ def events(experiment, run, block, trial):
 @exp_api.route('/run/<experiment>/<run>/results')
 def run_results(experiment, run):
     factors = sorted(experiment.factors, key=lambda x: x.id)
-    trial_measures = sorted((measure for measure in experiment.measures.itervalues() if measure.trial_level),
+    trial_measures = sorted((measure for measure
+                            in experiment.measures.itervalues()
+                            if measure.trial_level),
                             key=lambda x: x.id)
 
     if 'nojs' in request.args:
         return render_template('results_static.html',
                                trials=[
                                    _get_trial_measure_info(trial)
-                                   for trial in run.trials.filter(Trial.completion_date != None)
+                                   for trial in run.trials.filter(
+                                       Trial.completion_date != None)
                                ],
                                trial_measures=trial_measures,
                                factors=factors,
@@ -657,4 +667,3 @@ def run_trials(experiment, run):
     for trial in run.trials:
         trials.append(_trial_info(trial))
     return Response(json.dumps(trials),  mimetype='application/json')
-
