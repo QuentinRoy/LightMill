@@ -201,7 +201,7 @@ $(function () {
 
             function adjustShadow(scroll) {
                 var shadowFactor, newShadowCss, newHLCShadowCss,
-                    left = Math.min(initLeft - scroll, initLeft)
+                    left = Math.min(initLeft - scroll, initLeft);
                 shadowFactor = Math.min(shadowDist, Math.max(0, shadowDist - left - shadowDist)) / shadowDist;
 
 
@@ -235,7 +235,7 @@ $(function () {
                 }
             }
 
-            $(window).scroll(function () {
+            $(window).on('scroll load', function () {
                 var leftScroll,
                     topScroll = realTopScroll();
                 if (topScroll !== lastTopScroll) {
@@ -243,7 +243,7 @@ $(function () {
                     lastTopScroll = topScroll;
                 }
                 if (shadowCss || headerLeftColsShadowCss) {
-                    leftScroll = realLeftScroll()
+                    leftScroll = realLeftScroll();
                     if (leftScroll != lastLeftScroll) {
                         adjustShadow(leftScroll);
                         lastLeftScroll = leftScroll;
@@ -396,7 +396,7 @@ $(function () {
             this._fixedHeader = wrapper;
             this._fixedHeaderTable = newTable;
 
-            this._adjustHeaders()
+            this._adjustHeaders();
 
 
             var initTop = parseInt(wrapper.css('top')),
@@ -427,11 +427,11 @@ $(function () {
                     newShadowCss = shadowCss.replace(rgbaRegex, shadowMax * shadowFactor);
 
                 wrapper.css('box-shadow', newShadowCss);
-                if (shadowFactor == 0) wrapper.removeClass('shadowed')
+                if (shadowFactor === 0) wrapper.removeClass('shadowed');
                 else wrapper.addClass('shadowed');
             }
 
-            $(window).scroll(function () {
+            $(window).on('scroll load', function () {
                 var topScroll = realTopScroll(),
                     leftScroll,
                     topRaw = initTop - topScroll,
@@ -441,7 +441,7 @@ $(function () {
                     if (shadowCss) adjustShadow(topRaw);
                     lastTopScroll = topScroll;
                 } else {
-                    leftScroll = realLeftScroll()
+                    leftScroll = realLeftScroll();
                     if (leftScroll != lastLeftScroll) moveLeft();
                 }
             });
@@ -471,7 +471,7 @@ $(function () {
                     'max-width': thWidth,
                     'width': thWidth
 
-                }
+                };
                 fixedTh.css(newCss);
                 // adjust fixed col width
                 if (thi < this._fixedColumnNb) {
@@ -509,11 +509,11 @@ $(function () {
                         newRow.append(this._createInfoCell(col, rowValues));
                         break;
                     case 'factor' :
-                        newRow.append(this._createFactorCell(col, rowValues))
+                        newRow.append(this._createFactorCell(col, rowValues));
                         break;
                     case 'measure' :
-                        newRow.append(this._createMeasureCell(col, rowValues))
-                        break
+                        newRow.append(this._createMeasureCell(col, rowValues));
+                        break;
                 }
 
             }
@@ -574,5 +574,5 @@ $(function () {
     $(window).scroll(function () {
         var scroll = realTopScroll();
         $('#title').css('top', -scroll);
-    })
+    });
 });
