@@ -215,4 +215,6 @@ def csv_export(target_dir):
 
 
 if __name__ == '__main__':
-    csv_export('../export')
+    import sys
+    path = sys.argv[1] if len(sys.argv) > 1 else 'export'
+    csv_export(path)
