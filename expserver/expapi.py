@@ -202,18 +202,23 @@ def sorted_measures(experiment):
 
 @exp_api.route('/experiment/<experiment>/status')
 def expe_runs(experiment):
-    json_requested = 'json' in request.args and request.args['json'].lower() == 'true' or request.is_xhr
+    json_requested = ('json' in request.args and
+                      request.args['json'].lower() == 'true' or
+                      request.is_xhr)
     if json_requested:
         start = time.time()
-        runs_props = {}
+        runs_props = []
         for run in experiment.runs:
-            runs_props[run.id] = {
+            runs_props.append({
+                'id': run.id,
                 'completed': run.completed(),
                 'started': run.started(),
                 'locked': run.locked
-            }
-        runs_props['req_duration'] = time.time() - start
-        return jsonify(runs_props)
+            })
+        return jsonify({
+            'runs': runs_props,
+            'req_duration': time.time() - start
+            })
     else:
         runs = experiment.runs.all()
         return render_template('xp_status.html',
@@ -336,7 +341,6 @@ def block_props(experiment, run, block):
         'total': run.block_count()
     }
     return jsonify(props)
-
 
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET', 'OPTIONS'))
 def trial_props(experiment, run, block, trial):
