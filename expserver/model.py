@@ -566,7 +566,7 @@ class EventMeasureValue(MeasureValue):
 
     __table_args__ = (
         db.UniqueConstraint("_measure_db_id", "_event_db_id"),
-        # db.Index('index_event_measure_value', '_measure_db_id', '_event_db_id', unique=True),
+        db.Index('index_event_measure_value', '_event_db_id'),
     )
 
     def __init__(self, *args, **kwargs):
