@@ -467,6 +467,12 @@ def _get_measures_paths(measures):
         for path_head, path_tail in measures.iteritems():
             for path_tail, value in _get_measures_paths(path_tail):
                 yield [path_head] + path_tail, value
+    elif isinstance(measures, list):
+        path_head = 0
+        for path_tail in measures:
+            for path_tail, value in _get_measures_paths(path_tail):
+                yield [str(path_head)] + path_tail, value
+            path_head += 1
     else:
         yield [], measures
 
