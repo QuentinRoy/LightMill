@@ -87,6 +87,7 @@ class Run(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("_experiment_db_id", "id"),
+        db.Index('index_xp_runs', '_experiment_db_id')
     )
 
     def __init__(self, id, experiment):
@@ -171,7 +172,8 @@ def _free_number(number_list):
 block_values = db.Table(
     'block_values',
     db.Column('block_db_id', db.Integer, db.ForeignKey('block._db_id')),
-    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id'))
+    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id')),
+    db.Index('index_block_factor_values', 'block_db_id')
 )
 
 
@@ -203,6 +205,7 @@ class Block(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("_run_db_id", "number"),
+        db.Index("index_run_blocks", "_run_db_id")
     )
 
     @property
@@ -238,7 +241,8 @@ class Block(db.Model):
 trial_factor_values = db.Table(
     'trial_factor_values',
     db.Column('trial_db_id', db.Integer, db.ForeignKey('trial._db_id')),
-    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id'))
+    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id')),
+    db.Index('index_trial_factor_values', 'trial_db_id')
 )
 
 
@@ -281,6 +285,7 @@ class Trial(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
+        db.Index("index_block_trials", "_block_db_id")
     )
 
 
@@ -374,6 +379,7 @@ class Factor(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("id", "_experiment_db_id"),
+        db.Index("index_xp_factors", "_experiment_db_id")
     )
 
     def __init__(self, id, values, type, name=None, kind=None, tag=None, default_value=None):
@@ -414,7 +420,8 @@ class FactorValue(db.Model):
                              cascade="all, delete-orphan")
 
     __table_args__ = (
-        db.UniqueConstraint("id", "_factor_db_id"),
+        db.UniqueConstraint('id', '_factor_db_id'),
+        db.Index('index_factor_factorvalue', '_factor_db_id')
     )
 
     @property
@@ -456,7 +463,8 @@ class Measure(db.Model):
     __table_args__ = (
         db.CheckConstraint("trial_level OR event_level", name='at_least_one'),
         # db.UniqueConstraint("id", "_experiment_db_id"),
-        db.Index('index_measure', 'id', '_experiment_db_id', unique=True)
+        db.Index('index_measure', 'id', '_experiment_db_id', unique=True),
+        # db.Index('index_xp_measure', '_experiment_db_id')
     )
 
     def __init__(self, id, type, event_level=False, trial_level=False, name=None):
@@ -504,7 +512,8 @@ class Event(db.Model):
 
 
     __table_args__ = (
-        db.UniqueConstraint("number", "_trial_db_id"),
+        db.UniqueConstraint('number', '_trial_db_id'),
+        db.Index('index_trial_events', '_trial_db_id')
     )
 
 
@@ -549,7 +558,7 @@ class TrialMeasureValue(MeasureValue):
 
     __table_args__ = (
         db.UniqueConstraint("_measure_db_id", "_trial_db_id"),
- #       db.Index('index_trial_measure_value', '_measure_db_id', '_trial_db_id', unique=True),
+        db.Index('index_trial_measure_values', '_trial_db_id'),
     )
 
     def __init__(self, *args, **kwargs):
@@ -566,7 +575,7 @@ class EventMeasureValue(MeasureValue):
 
     __table_args__ = (
         db.UniqueConstraint("_measure_db_id", "_event_db_id"),
-        db.Index('index_event_measure_value', '_event_db_id'),
+        db.Index('index_event_measure_values', '_event_db_id'),
     )
 
     def __init__(self, *args, **kwargs):
