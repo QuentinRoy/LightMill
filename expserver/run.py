@@ -3,7 +3,6 @@ __author__ = 'Quentin Roy'
 
 import sys
 
-
 from gevent import monkey
 monkey.patch_all()
 
