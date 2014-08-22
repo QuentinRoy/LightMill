@@ -459,7 +459,7 @@ def trial_stroke(experiment, run, block, trial):
 
 def _convert_measures(measures):
     for measure_path, value in _get_measures_paths(measures):
-        if value:
+        if value is not None:
             yield '.'.join(measure_path), value
 
 

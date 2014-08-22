@@ -5,5 +5,7 @@ experiments.db
 .idea
 *.pyc
 venv
+pypyvenv
 *.DS_Store
 export
+*.orig
