@@ -9,6 +9,7 @@ import time
 from csv import DictWriter
 from collections import OrderedDict
 
+DELIMITER = ';'
 
 def convert_bool(val):
     if str(val).lower() == 'true':
@@ -115,7 +116,7 @@ def create_logger(fields, target_path):
             field_names.append(field['final_name'])
 
     target_file = open(target_path, 'w')
-    dict_writer = DictWriter(target_file, field_names)
+    dict_writer = DictWriter(target_file, field_names, delimiter=DELIMITER)
     dict_writer.writeheader()
     return dict_writer
 
