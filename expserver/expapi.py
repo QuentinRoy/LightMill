@@ -19,6 +19,8 @@ import thread
 from threading import Lock
 from sqlalchemy import event
 from geventwebsocket.exceptions import WebSocketError
+from touchstone import create_experiment, parse_experiment_id
+from StringIO import StringIO
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
 
@@ -41,6 +43,21 @@ class UnknownElement(Exception):
 
 
 class WrongMeasureKey(Warning):
+    status_code = 400
+
+    def __init__(self, message, status_code=status_code, payload=None):
+        Warning.__init__(self, message)
+        self.message = message
+        self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
+class CannotImportExperiment(Warning):
     status_code = 400
 
     def __init__(self, message, status_code=status_code, payload=None):
@@ -130,12 +147,21 @@ def pull_objects(endpoint, values):
 def allow_origin(response):
     """Makes all the api accessible from any origin"""
     response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
     return response
+
+
+# allows any OPTIONS call
+@exp_api.route('/*', methods=['OPTIONS'])
+def options():
+    resp = make_response()
+    return resp
 
 
 @exp_api.route('/experiments')
 def experiments_list():
-    json_requested = 'json' in request.args and request.args['json'].lower() == 'true' or request.is_xhr
+    json_requested = ('json' in request.args and request.args['json'].lower() == 'true') or request.is_xhr
+    print(request.is_xhr)
     if json_requested:
         experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
         return jsonify(experiments)
@@ -226,6 +252,22 @@ def expe_runs(experiment):
                                experiment=experiment,
                                completed_nb=len([run for run in runs if run.completed()]),
                                total_nb=len(runs))
+
+
+@exp_api.route('/import', methods=['POST'])
+def expe_import():
+    if request.method == 'POST':
+        # retrieve the id of the experiment
+        expe_id = parse_experiment_id(StringIO(request.data))
+        import pdb; pdb.set_trace()
+        # check if the experiment already exists
+        if db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
+            raise CannotImportExperiment('Experiment already exists.')
+        # create the experiment and commit the data
+        experiment = create_experiment(StringIO(request.data))
+        db.session.add(experiment)
+        db.session.commit()
+        return expe_runs(experiment)
 
 
 @exp_api.route('/experiment/<experiment>/next_run')
