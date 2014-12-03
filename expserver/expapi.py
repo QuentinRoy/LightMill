@@ -161,7 +161,6 @@ def options():
 @exp_api.route('/experiments')
 def experiments_list():
     json_requested = ('json' in request.args and request.args['json'].lower() == 'true') or request.is_xhr
-    print(request.is_xhr)
     if json_requested:
         experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
         return jsonify(experiments)
