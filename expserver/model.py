@@ -77,7 +77,7 @@ class Run(db.Model):
 
     id = db.Column(db.String(20), index=True)
 
-    token = db.Column(db.String(20), unique=True)
+    token = db.Column(db.String(50), unique=True)
 
     experiment = db.relationship(Experiment,
                                  backref=db.backref('runs',
