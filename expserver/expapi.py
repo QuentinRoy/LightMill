@@ -270,10 +270,11 @@ def expe_import():
 
 @exp_api.route('/experiment/<experiment>/next_run')
 def get_free_run(experiment):
-    started_runs = experiment.runs.join(Block, Trial).filter(Trial.completion_date != None).all()
+    started_runs = experiment.runs.filter(Run.token == None) \
+                             .join(Block, Trial).filter(Trial.completion_date != None).all()
     target_run = None
     for run in experiment.runs:
-        if run not in started_runs:
+        if run not in started_runs :
             target_run = run
             break
     if target_run:
@@ -658,8 +659,11 @@ def result_socket(experiment, run):
             func_trial = Trial.query.get_by_number(trial_number, block_number, run.id, experiment.id)
             send_trial(func_trial)
 
-        for trial in run.trials.filter(Trial.completion_date != None):
-            send_trial(trial)
+        try:
+            for trial in run.trials.filter(Trial.completion_date != None):
+                send_trial(trial)
+        except WebSocketError:
+            return ''
 
         _trial_completed_alert.append_listener(listener, experiment.id, run.id)
 
