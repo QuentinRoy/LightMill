@@ -258,6 +258,7 @@ def expe_import():
     if request.method == 'POST':
         # retrieve the id of the experiment
         expe_id = parse_experiment_id(StringIO(request.data))
+        print('Import experiment {}'.format(expe_id))
         # check if the experiment already exists
         if db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
             raise CannotImportExperiment('Experiment already exists.')
