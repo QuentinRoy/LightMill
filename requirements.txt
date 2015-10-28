@@ -1,4 +1,4 @@
 flask==0.10.1
-gevent==1.0.1
+gevent==1.0.2
 Flask-SQLAlchemy==1.0
 gevent-websocket==0.9.3
