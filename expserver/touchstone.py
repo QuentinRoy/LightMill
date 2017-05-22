@@ -113,9 +113,12 @@ def _parse_factor_values_string(values_string, experiment):
     values = []
     for factor_id, value_id in value_seq:
         # we cannot use a query so we have to filter by hand
-        factor = next(factor for factor in experiment.factors if factor.id == factor_id)
-        value = next(value for value in factor.values if value.id == value_id)
-        values.append(value)
+        try:
+            factor = next(factor for factor in experiment.factors if factor.id == factor_id)
+            value = next(value for value in factor.values if value.id == value_id)
+            values.append(value)
+        except StopIteration:
+            raise Exception('Factor or factor value not registered: {}={}'.format(factor_id, value_id))
     return values
 
 
