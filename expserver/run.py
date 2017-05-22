@@ -47,6 +47,7 @@ if __name__ == '__main__':
     @serving.run_with_reloader
     def runServer():
         app.debug = True
+        print("Starting server on port 5000.")
         http_server = WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
         http_server.serve_forever()
 
