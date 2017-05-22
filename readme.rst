@@ -10,8 +10,10 @@ experiment design platform files to guide experiment runs through a web interfac
 Make it run!
 ------------
 
-    $ ./configure.sh
-    $ ./run-server.sh
+.. code:: shell
+
+  ./configure.sh
+  ./run-server.sh
 
 You can then access the web interface from localhost on the corresponding port.
 
@@ -19,7 +21,9 @@ You can then access the web interface from localhost on the corresponding port.
 Grab the results!
 -----------------
 
-    $ ./export.sh
+.. code:: shell
+
+  ./export.sh
 
 The results will be exported in the export folder.
 
