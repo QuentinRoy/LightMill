@@ -176,7 +176,7 @@ def run_csv_export(run, trial_logger, events_log_dir,
               trial_event_count,
               trial_row_end - trial_start,
               trial_end - event_rows_start,
-              float(trial_events_time) / trial_event_count))
+              float(trial_events_time) / trial_event_count if trial_event_count else 0))
 
 
     run_end = time.time()
