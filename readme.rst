@@ -6,16 +6,23 @@ This project is a python server that follows Caroline Appert's
 `TouchStone <https://www.lri.fr/~appert/website/touchstone/touchstone.html>`_
 experiment design platform files to guide experiment runs through a web interface and log their results.
 
+------------
 Make it run!
 ------------
 
-To make it run, you just have to do something like::
+    $ ./configure.sh
+    $ ./run-server.sh
 
-    $ virtualenv venv
-    $ source venv/bin/activate
-    $ pip install -r expserver/requirements.txt
-    $ cd expserver
-    $ python run.py
+You can then access the web interface from localhost on the corresponding port.
+
+-----------------
+Grab the results!
+-----------------
+
+    $ ./export.sh
+
+The results will be exported in the export folder.
+
 
 The experiment described in `experiment.xml`:code: at the root folder will be automatically imported into the database
 at server startup (if not already in).
