@@ -15,7 +15,7 @@ Make it run!
   ./configure.sh
   ./run-server.sh
 
-You need a python 2.7 interpreter and `virtualenv` installed. If `virtualenv` is unfound, you can install it with `easy_install virtualenv`.
+You need a python 2.7 interpreter and *virtualenv* installed. If *virtualenv* is unfound, you can install it with :code:`easy_install virtualenv`.
 
 You can then access the web interface from localhost on the corresponding port.
 
