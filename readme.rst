@@ -39,6 +39,6 @@ Locked run issue
 
 To avoid concurrent update, when an experiment run is being used, it is automatically locked so that only one client can modify it. Most of the time, run will automatically unlock when the client disconnects. However, it can happen that the client is 'killed' without the possibility to warn the server (in particular on mobile devices), and thus the run remains locked.
 
-You can manually unlock a run by going on the run page from the web interface and add :code:`force_unlock` after the node id – e.g. http://localhost:5000/run/myxp/S0/force_unlock.
+You can manually unlock a run by going on the run page from the web interface and add :code:`force_unlock` after the node id—e.g. http://localhost:5000/run/myxp/S0/force_unlock.
 
 One day I'll add a button for that.
