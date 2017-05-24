@@ -4,41 +4,40 @@
 
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
-    <title>Experiment {{ experiment.name }}'s Status</title>
+    <title>Experiment {{ experiment.name or experiment.id }}'s Status</title>
 
     {% block styles %}
         <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/xp_status.css') }}">
     {% endblock %}
 
-<script>
-    function openResultPage(runId){
-        window.open("/run/{{ experiment.id }}/"+runId+'/results', '_blank');
-    }
-
-</script>
+    <script>
+        function openResultPage(runId){
+            window.open("/run/{{ experiment.id }}/"+runId+'/results', '_blank');
+        }
+    </script>
 
 </head>
 
 <body>
 
-<h1>Experiment {{ experiment.name }}'s Status</h1>
+    <h1>Experiment {{ experiment.name or experiment.id }}'s Status</h1>
 
-<div id="summary">
-    Run completed: {{ completed_nb }}/{{ total_nb }}
-</div>
+    <div id="summary">
+        Run completed: {{ completed_nb }}/{{ total_nb }}
+    </div>
 
-<table id="table-status">
-    {% set cycle = cycler('odd', 'even') %}
-    {% for run in runs %}
-        {% set run_status = run.status() %}
-        <tr class="run-row run-{{ run_status }} {{ cycle.next() }}"
-            run-id="{{ run.id }}"
-            onclick="openResultPage('{{ run.id }}');" >
-            <th class="run-id">{{ run.id }}</th>
-            <td class="run-status">
-                {{ run_status }}
-            </td>
-        </tr>
-    {% endfor %}
-</table>
+    <table id="table-status">
+        {% set cycle = cycler('odd', 'even') %}
+        {% for run in runs %}
+            {% set run_status = run.status() %}
+            <tr class="run-row run-{{ run_status }} {{ cycle.next() }}"
+                run-id="{{ run.id }}"
+                onclick="openResultPage('{{ run.id }}');" >
+                <th class="run-id">{{ run.id }}</th>
+                <td class="run-status">
+                    {{ run_status }}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
 </body>

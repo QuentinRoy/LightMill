@@ -18,7 +18,7 @@
 
 <ul id="xp-list">
     {% for xp in experiments %}
-        <li><a href="/experiment/{{xp.id}}/status">{{ xp.name }}</a></li>
+        <li><a href="/experiment/{{xp.id}}/status">{{ xp.name or xp.id }}</a></li>
     {% endfor %}
 </ul>
 </body>

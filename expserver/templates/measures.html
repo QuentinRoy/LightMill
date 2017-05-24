@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Measures: {{ experiment.name }}</title>
+    <title>Measures: {{ experiment.name or experiment.id }}</title>
     <style>
         .measure-id {
             font-weight: bold;
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-<h1>Measures of the experiment '{{ experiment.name }}'</h1>
+<h1>Measures of the experiment '{{ experiment.name or experiment.id }}'</h1>
 
 
 <h2>Trial Level Measures</h2>

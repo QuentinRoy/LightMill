@@ -6,7 +6,7 @@
     {% block head %}
         <meta http-equiv="content-type" content="text/html; charset=utf-8">
 
-        <title>{% block title %}Trial results: {{ run.id }} ({{ experiment.name }}){% endblock %}</title>
+        <title>{% block title %}Trial results: {{ run.id }} ({{ experiment.name or experiment.id }}){% endblock %}</title>
 
 
         {% block styles %}
@@ -21,7 +21,7 @@
 <body>
 {% block body %}
 
-    <h1 id='title'>Trial results of run {{ run.id }} of experiment '{{ experiment.name }}'</h1>
+    <h1 id='title'>Trial results of run {{ run.id }} of experiment '{{  experiment.name or experiment.id }}'</h1>
 
     <div id="container">
         {% block content %}{% strip %}
@@ -40,11 +40,7 @@
                             <th title='factor id: {{ ' ' + factor.id }}'
                                 class='column-{{ factor.id }}-factor {{ ' ' + cycle.next() }}'
                                 column-type='factor' factor='{{ factor.id }}'>
-                                {% if factor.name != None %}
-                                    {{- factor.name -}}
-                                {% else %}
-                                    {{- factor.id -}}
-                                {% endif %}
+                                  {{- factor.name or factor.id-}}
                             </th>
                         {% endfor %}
 
@@ -52,11 +48,7 @@
                             <th class='column-{{ measure.id }}-measure {{ ' ' + cycle.next() }}'
                                 column-type='measure' measure='{{ measure.id }}'
                                 title='measure id: {{ ' '+ measure.id }}'>
-                                {%- if measure.name != None -%}
-                                    {{- measure.name -}}
-                                {%- else -%}
-                                    {{- measure.id -}}
-                                {% endif %}
+                                  {{- measure.name or measure.id -}}
                             </th>
                         {% endfor %}
                     </tr>
