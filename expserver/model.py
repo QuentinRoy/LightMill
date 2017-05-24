@@ -13,6 +13,17 @@ db = SQLAlchemy()
 # logging.basicConfig(filename="/Users/quentin/Workspace/Dev/xpserver/dbrequests.log", filemode='w', level=logging.INFO)
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
+
+def _free_number(number_list):
+    numbers = sorted(number_list)
+    i = 0
+    for number in numbers:
+        if number != i:
+            return i
+        i += 1
+    return i
+
+
 class ExperimentProgressError(Exception):
     pass
 
@@ -157,16 +168,6 @@ class Run(db.Model):
                 return run
             else:
                 prev = run
-
-
-def _free_number(number_list):
-    numbers = sorted(number_list)
-    i = 0
-    for number in numbers:
-        if number != i:
-            return i
-        i += 1
-    return i
 
 
 block_values = db.Table(

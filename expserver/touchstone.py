@@ -136,11 +136,9 @@ def _parse_block(dom, run):
 
 
 def _parse_trial(dom, block):
-    num = dom.get('number')
     values_string = dom.get('values')
     values = _parse_factor_values_string(values_string, block.experiment) if values_string else []
     trial = Trial(block,
-                  number=int(num) if num is not None else None,
                   values=values)
     return trial
 
