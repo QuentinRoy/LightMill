@@ -13,7 +13,7 @@ from touchstone import create_experiment, parse_experiment_id
 import os
 import default_settings
 from geventwebsocket.handler import WebSocketHandler
-from gevent.pywsgi import WSGIServer
+from gevent.wsgi import WSGIServer
 from werkzeug import serving
 
 # app creation
@@ -48,9 +48,15 @@ if __name__ == '__main__':
     @serving.run_with_reloader
     def runServer():
         app.debug = True
-        print("Starting server on port 5000.")
-        http_server = WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
-        http_server.serve_forever()
-
+        print("Starting server on 0.0.0.0:{}.".format(default_settings.SERVER_PORT))
+        server = WSGIServer(
+            ('0.0.0.0', default_settings.SERVER_PORT),
+            app,
+            handler_class=WebSocketHandler
+        )
+        try:
+            server.start()
+        except KeyboardInterrupt:
+            server.stop()
 
     runServer()
