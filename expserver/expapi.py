@@ -380,7 +380,7 @@ def block_props(experiment, run, block):
     props = {
         'number': block.number,
         'measure_block_number': block.measure_block_number(),
-        'values': dict((value.factor.id, value.id) for value in block.values),
+        'values': dict((value.factor.id, value.id) for value in block.factor_values),
         'total': run.block_count()
     }
     return jsonify(props)
