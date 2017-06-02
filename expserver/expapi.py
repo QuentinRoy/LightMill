@@ -372,7 +372,7 @@ def run_current_trial(experiment, run):
         })
         response.status_code = 410
         return response
-    return jsonify(_trial_info(trial))
+    return jsonify(_get_trial_info(trial))
 
 
 @exp_api.route('/block/<experiment>/<run>/<int:block>')
@@ -436,7 +436,7 @@ def trial_props(experiment, run, block, trial):
             trial.set_completed()
             db.session.commit()
 
-    return jsonify(_trial_info(trial))
+    return jsonify(_get_trial_info(trial))
 
 
 def _get_measure_value(measure_id, measure_value, measure_level, trial, add_measure_if_missing=ADD_MISSING_MEASURES):
@@ -521,7 +521,7 @@ def _get_measures_paths(measures):
         yield [], measures
 
 
-def _trial_info(trial):
+def _get_trial_info(trial):
     values = dict((value.factor.id, value.id) for value in trial.factor_values)
     block_values = dict((value.factor.id, value.id)
                         for value in trial.block.factor_values)
@@ -722,5 +722,5 @@ def _get_trial_measure(trial):
 def run_trials(experiment, run):
     trials = []
     for trial in run.trials:
-        trials.append(_trial_info(trial))
+        trials.append(_get_trial_info(trial))
     return Response(json.dumps(trials),  mimetype='application/json')
