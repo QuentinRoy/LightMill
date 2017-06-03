@@ -1,26 +1,22 @@
-import warnings
-
 __author__ = 'Quentin Roy'
 
+import os
+import uuid
+import time
+import json
+import warnings
+from collections import OrderedDict
+from StringIO import StringIO
+from flask import jsonify, redirect, request, render_template, Response
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
-import os
-import uuid
-from flask import jsonify, redirect, request, render_template, abort, Response
+from sqlalchemy.exc import IntegrityError
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue
 from model import Measure, MeasureLevelError
-import time
-from collections import OrderedDict
-from sqlalchemy.exc import IntegrityError
-import json
-import thread
-from threading import Lock
-from sqlalchemy import event
-from geventwebsocket.exceptions import WebSocketError
 from touchstone import create_experiment, parse_experiment_id
-from StringIO import StringIO
+
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
 
@@ -604,112 +600,16 @@ def run_results(experiment, run):
                             if measure.trial_level),
                             key=lambda x: x.id)
 
-    if 'nojs' in request.args:
-        return render_template('results_static.html',
-                               trials=[
-                                   _get_trial_measure_info(trial)
-                                   for trial in run.trials.filter(
-                                       Trial.completion_date != None)
-                               ],
-                               trial_measures=trial_measures,
-                               factors=factors,
-                               run=run,
-                               experiment=experiment)
-    else:
-        return render_template('results_websocket.html',
-                               config={
-                                   'factors': OrderedDict((factor.id, factor.name) for factor in factors),
-                                   'measures': OrderedDict((measure.id, measure.name) for measure in trial_measures),
-                                   'run_id': run.id,
-                                   'experiment_id': experiment.id,
-                                   'websocket_url': url_for('exp_api.result_socket',
-                                                            experiment=experiment.id,
-                                                            run=run.id)
-                               },
-                               trial_measures=trial_measures,
-                               factors=factors,
-                               run=run,
-                               experiment=experiment)
-
-
-class _TrialCompletedAlert():
-    def __init__(self):
-        self._listeners = {}
-        self._lock = Lock()
-
-        event.listen(Trial.completion_date, 'set', self._listen)
-
-    def _listen(self, target, value, oldvalue, initiator):
-        exp_id, run_id = target.experiment.id, target.run.id
-        if not exp_id in self._listeners or not run_id in self._listeners[exp_id]:
-            return
-        listeners = self._listeners[target.experiment.id][target.run.id]
-        if listeners and value is not None:
-            thread.start_new_thread(self._call_trial_completed_listeners,
-                                    [listeners, target.number, target.block.number])
-
-    def _call_trial_completed_listeners(self, listeners, trial_number, block_number):
-        with self._lock:
-            for listener in listeners:
-                listener(trial_number, block_number)
-
-    def append_listener(self, listener, experiment_id, run_id):
-        if not experiment_id in self._listeners:
-            self._listeners[experiment_id] = {}
-        if not run_id in self._listeners[experiment_id]:
-            self._listeners[experiment_id][run_id] = []
-        self._listeners[experiment_id][run_id].append(listener)
-
-    def remove_listener(self, listener, experiment_id, run_id):
-        self._listeners[experiment_id][run_id].remove(listener)
-
-
-_trial_completed_alert = _TrialCompletedAlert()
-
-
-@exp_api.route('/run/<experiment>/<run>/result_socket')
-def result_socket(experiment, run):
-    if request.environ.get('wsgi.websocket'):
-
-        ws = request.environ['wsgi.websocket']
-
-        def send_trial(func_trial):
-            trial_info = _get_trial_measure_info(func_trial)
-
-            # convert the factors
-            factors = trial_info['factors']
-            for factor_id in factors:
-                factors[factor_id] = factors[factor_id].id
-
-            # print('WebSocket send')
-            func_message = json.dumps(trial_info)
-            ws.send(func_message)
-
-        def listener(trial_number, block_number):
-            func_trial = Trial.query.get_by_number(trial_number, block_number, run.id, experiment.id)
-            send_trial(func_trial)
-
-        try:
-            for trial in run.trials.filter(Trial.completion_date != None):
-                send_trial(trial)
-        except WebSocketError:
-            return ''
-
-        _trial_completed_alert.append_listener(listener, experiment.id, run.id)
-
-        while True:
-            try:
-                message = ws.receive()
-                # we don't care about what you're saying.
-                if message is None:
-                    break
-            except WebSocketError:
-                break
-            finally:
-                _trial_completed_alert.remove_listener(listener, experiment.id, run.id)
-        return ''
-    else:
-        abort(400, "Expected WebSocket request")
+    return render_template('results_static.html',
+                           trials=[
+                               _get_trial_measure_info(trial)
+                               for trial in run.trials.filter(
+                                   Trial.completion_date != None)
+                           ],
+                           trial_measures=trial_measures,
+                           factors=factors,
+                           run=run,
+                           experiment=experiment)
 
 
 @exp_api.route('/test')

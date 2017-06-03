@@ -5,6 +5,7 @@ expertiment.xml
 experiments.db
 .idea
 *.pyc
+*.pyo
 venv
 pypyvenv
 *.DS_Store

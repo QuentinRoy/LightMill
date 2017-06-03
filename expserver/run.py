@@ -1,20 +1,14 @@
 __author__ = 'Quentin Roy'
 
-
 import sys
-
-from gevent import monkey
-monkey.patch_all()
-
+import os
 from flask import Flask
+from werkzeug import serving
 from expapi import exp_api
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
-import os
 import default_settings
-from geventwebsocket.handler import WebSocketHandler
-from gevent.wsgi import WSGIServer
-from werkzeug import serving
+
 
 # app creation
 app = Flask(__name__.split('.')[0])
@@ -45,18 +39,5 @@ if __name__ == '__main__':
     if os.path.exists(default_settings.TOUCHSTONE_FILE):
         import_experiment(default_settings.TOUCHSTONE_FILE)
 
-    @serving.run_with_reloader
-    def runServer():
-        app.debug = True
-        print("Starting server on 0.0.0.0:{}.".format(default_settings.SERVER_PORT))
-        server = WSGIServer(
-            ('0.0.0.0', default_settings.SERVER_PORT),
-            app,
-            handler_class=WebSocketHandler
-        )
-        try:
-            server.start()
-        except KeyboardInterrupt:
-            server.stop()
-
-    runServer()
+    app.debug = __debug__
+    app.run(host='0.0.0.0')
