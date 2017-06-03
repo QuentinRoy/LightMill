@@ -331,7 +331,14 @@ def unlock_run(experiment, run):
         })
         response.status_code = 405
         return response
-    elif request.form.get('token', None) != run.token:
+    elif not request.is_json:
+        response = jsonify({
+            'message': 'Incorrect request type.',
+            'type': 'Incorrect Request Type'
+        })
+        response.status_code = 405
+        return response
+    elif request.get_json().get('token', None) != run.token:
         response = jsonify({
             'message': 'Wrong token: {} for run {}'.format(request.data.get('token', None), run.id),
             'type': 'WrongToken'
