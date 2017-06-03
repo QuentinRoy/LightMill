@@ -6,12 +6,8 @@ from flask_sqlalchemy import SQLAlchemy, BaseQuery
 from datetime import datetime
 from sqlalchemy.ext.declarative.api import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm.collections import attribute_mapped_collection
-# import logging
 
 db = SQLAlchemy()
-
-# logging.basicConfig(filename="/Users/quentin/Workspace/Dev/xpserver/dbrequests.log", filemode='w', level=logging.INFO)
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 
 def _free_number(number_list):
@@ -70,16 +66,18 @@ class Experiment(db.Model):
         return self.runs.filter_by(id=run_id).one()
 
     def trial_measures(self):
-        return self.measures.filter('Measure.trial_level' == True)
+        return self.measures.filter('Measure.trial_level')
 
     def event_measures(self):
-        return self.measures.filter('Measure.event_level' == True)
+        return self.measures.filter('Measure.event_level')
 
 
 class Run(db.Model):
     class RunQuery(BaseQuery):
         def get_by_id(self, run_id, experiment_id):
-            return Run.query.join(Experiment).filter(Run.id == run_id).filter(Experiment.id == experiment_id).one()
+            return Run.query.join(Experiment).filter(Run.id == run_id).filter(
+                Experiment.id == experiment_id
+                ).one()
 
     query_class = RunQuery
 
@@ -215,16 +213,20 @@ class Block(db.Model):
 
     def __init__(self, run, values, number=None, practice=False):
         self.practice = practice
-        self.number = number if number is not None else _free_number(block.number for block in run.blocks)
+        self.number = (
+            number if number is not None else _free_number(block.number for block in run.blocks)
+        )
         self.run = run
         self.factor_values = values
 
     def __repr__(self):
-        return '<{} {} (run id: {}, experiment id: {}>' \
-            .format(self.__class__.__name__,
-                    self.number,
-                    self.run.id if self.run is not None else None,
-                    self.run.experiment.id if self.run is not None and self.run.experiment is not None else None)
+        return '<{} {} (run id: {}, experiment id: {}>'.format(
+            self.__class__.__name__,
+            self.number,
+            self.run.id if self.run is not None else None,
+            self.run.experiment.id if self.run is not None and self.run.experiment is not None
+            else None
+        )
 
     def measure_block_number(self):
         if not self.practice:
@@ -289,7 +291,6 @@ class Trial(db.Model):
         db.Index("index_block_trials", "_block_db_id")
     )
 
-
     @property
     def completed(self):
         return self.completion_date is not None
@@ -299,22 +300,43 @@ class Trial(db.Model):
         if self.completed:
             raise ExperimentProgressError("Trial already completed.")
         if previous is not None and not previous.completed:
-            raise ExperimentProgressError("Cannot complete trial {}: previous trial is not completed yet. "
-                                          "Trials must be completed sequentially.".format(repr(self)))
+            raise ExperimentProgressError(
+                "Cannot complete trial {}: previous trial is not completed yet. "
+                "Trials must be completed sequentially.".format(repr(self))
+            )
         self.completion_date = datetime.today()
 
     def previous(self):
         if self.number > 0:
-            return Trial.query.get_by_number(self.number - 1, self.block.number, self.run.id, self.experiment.id)
+            return Trial.query.get_by_number(
+                self.number - 1,
+                self.block.number,
+                self.run.id,
+                self.experiment.id
+            )
         elif self.block.number > 0:
-            block = Block.query.get_by_number(self.block.number - 1, self.run.id, self.experiment.id)
+            block = Block.query.get_by_number(
+                self.block.number - 1,
+                self.run.id,
+                self.experiment.id
+            )
             return block.trials.filter(Trial.number == block.length() - 1).one()
 
     def next(self):
         if self.number + 1 < self.block.length():
-            return Trial.query.get_by_number(self.number + 1, self.block.number, self.run.id, self.experiment.id)
+            return Trial.query.get_by_number(
+                self.number + 1,
+                self.block.number,
+                self.run.id,
+                self.experiment.id
+            )
         elif self.block.number + 1 < self.run.block_count():
-            return Trial.query.get_by_number(0, self.block.number + 1, self.run.id, self.experiment.id)
+            return Trial.query.get_by_number(
+                0,
+                self.block.number + 1,
+                self.run.id,
+                self.experiment.id
+            )
 
     @property
     def experiment(self):
@@ -337,9 +359,10 @@ class Trial(db.Model):
             if factor.default_value:
                 yield factor.default_value
 
-
     def __init__(self, block, values, number=None):
-        self.number = number if number is not None else _free_number(trial.number for trial in block.trials)
+        self.number = (
+            number if number is not None else _free_number(trial.number for trial in block.trials)
+        )
         self.block = block
         self.factor_values = values
 
@@ -353,10 +376,12 @@ class Trial(db.Model):
             .format(self.__class__.__name__,
                     self.number,
                     self.block.number if self.block else None,
-                    self.block.run.id if self.block is not None and self.block.run is not None else None,
+                    self.block.run.id if self.block is not None and self.block.run is not None
+                    else None,
                     self.block.run.experiment.id if (self.block is not None and
                                                      self.block.run is not None and
-                                                     self.block.run.experiment is not None) else None,
+                                                     self.block.run.experiment is not None)
+                    else None,
                     self.completion_date.ctime() if self.completion_date else None)
 
 
@@ -511,7 +536,6 @@ class Event(db.Model):
         self.number = number
         self.trial = trial
 
-
     __table_args__ = (
         db.UniqueConstraint('number', '_trial_db_id'),
         db.Index('index_trial_events', '_trial_db_id')
@@ -565,7 +589,9 @@ class TrialMeasureValue(MeasureValue):
     def __init__(self, *args, **kwargs):
         super(TrialMeasureValue, self).__init__(*args, **kwargs)
         if not self.measure.trial_level:
-            raise MeasureLevelError("Associated measure ({}) is not at the trial level.".format(self.measure.id))
+            raise MeasureLevelError(
+                "Associated measure ({}) is not at the trial level.".format(self.measure.id)
+            )
 
 
 class EventMeasureValue(MeasureValue):
@@ -582,7 +608,9 @@ class EventMeasureValue(MeasureValue):
     def __init__(self, *args, **kwargs):
         super(EventMeasureValue, self).__init__(*args, **kwargs)
         if not self.measure.event_level:
-            raise MeasureLevelError("Associated measure ({}) is not at the event level.".format(self.measure.id))
+            raise MeasureLevelError(
+                "Associated measure ({}) is not at the event level.".format(self.measure.id)
+            )
 
 
 #################################
@@ -599,7 +627,10 @@ if __name__ == '__main__':
     print('Model Debug')
 
     def gen_factor_values():
-        return (FactorValue('v{}'.format(v_num), 'Test value number {}'.format(v_num)) for v_num in range(3))
+        return (FactorValue(
+            'v{}'.format(v_num),
+            'Test value number {}'.format(v_num)
+        ) for v_num in range(3))
 
     def gen_factors(num=3):
         for f_num in range(num):
@@ -654,10 +685,14 @@ if __name__ == '__main__':
                                   values=random_values(exp, 2))
                     for _ in range(10):
                         trial = Trial(block, values=random_values(exp, 2))
-                        trial.measure_values.append(TrialMeasureValue(random.randint(0, 1000), trial_measure))
+                        trial.measure_values.append(
+                            TrialMeasureValue(random.randint(0, 1000), trial_measure)
+                        )
                         for _ in range(5):
-                            event = Event(
-                                [EventMeasureValue("lorem value {}".format(random.randint(0, 1000)), event_measure)])
+                            event = Event([EventMeasureValue(
+                                "lorem value {}".format(random.randint(0, 1000)),
+                                event_measure
+                            )])
                             trial.add_event(event)
 
             db.session.add(exp)
@@ -675,7 +710,9 @@ if __name__ == '__main__':
                     print('  ' + repr(trial))
 
             print('Get factor f1: ' + repr(exp.get_factor('f1')))
-            print('Last block measured block num: {}'.format(exp.runs[0].blocks[-1].measure_block_number()))
+            print('Last block measured block num: {}'.format(
+                exp.runs[0].blocks[-1].measure_block_number())
+            )
 
     db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))
     app = Flask(os.path.splitext(__name__)[0])

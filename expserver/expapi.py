@@ -82,7 +82,7 @@ def handle_invalid_usage(error):
 
 
 @exp_api.errorhandler(ExperimentProgressError)
-def handle_invalid_usage(error):
+def handle_experiment_error(error):
     response = jsonify({
         'message': error.args[0],
         'type': error.__class__.__name__
@@ -92,7 +92,12 @@ def handle_invalid_usage(error):
 
 
 def _pull_trial(values):
-    trial = Trial.query.get_by_number(values['trial'], values['block'], values['run'], values['experiment'])
+    trial = Trial.query.get_by_number(
+        values['trial'],
+        values['block'],
+        values['run'],
+        values['experiment']
+    )
     values['trial'] = trial
     values['experiment'] = trial.experiment
     values['block'] = trial.block
@@ -127,11 +132,11 @@ def pull_objects(endpoint, values):
         return
     try:
         if 'experiment' in values:
-            if not 'run' in values:
+            if 'run' not in values:
                 _pull_experiment(values)
-            elif not 'block' in values:
+            elif 'block' not in values:
                 _pull_run(values)
-            elif not 'trial' in values:
+            elif 'trial' not in values:
                 _pull_block(values)
             else:
                 _pull_trial(values)
@@ -156,9 +161,13 @@ def options():
 
 @exp_api.route('/experiments')
 def experiments_list():
-    json_requested = ('json' in request.args and request.args['json'].lower() == 'true') or request.is_xhr
+    json_requested = (
+        'json' in request.args and request.args['json'].lower() == 'true'
+    ) or request.is_xhr
     if json_requested:
-        experiments = dict((experiment.id, experiment.name) for experiment in Experiment.query.all())
+        experiments = dict(
+            (experiment.id, experiment.name) for experiment in Experiment.query.all()
+        )
         return jsonify(experiments)
     else:
         return render_template('experiments_list.html',
@@ -269,10 +278,10 @@ def expe_import():
 @exp_api.route('/experiment/<experiment>/next_run')
 def get_free_run(experiment):
     started_runs = experiment.runs.filter(Run.token == None) \
-                             .join(Block, Trial).filter(Trial.completion_date != None).all()
+                             .join(Block, Trial).filter(Trial.completion_date == None).all()
     target_run = None
     for run in experiment.runs:
-        if run not in started_runs :
+        if run not in started_runs:
             target_run = run
             break
     if target_run:
@@ -409,7 +418,11 @@ def block_props(experiment, run, block):
     }
     return jsonify(props)
 
-@exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>', methods=('POST', 'GET', 'OPTIONS'))
+
+@exp_api.route(
+    '/trial/<experiment>/<run>/<int:block>/<int:trial>',
+    methods=('POST', 'GET', 'OPTIONS')
+)
 def trial_props(experiment, run, block, trial):
     if request.method == 'OPTIONS':
         resp = make_response()
@@ -435,15 +448,17 @@ def trial_props(experiment, run, block, trial):
             response.status_code = 405
             return response
 
-        measures = experiment.measures
         data_measures = data['measures']
         if data_measures:
 
             # register trial measures
             for measure_id, measure_value in _convert_measures(data_measures['trial']):
-                val = _get_measure_value(measure_id, measure_value, measure_level='trial', trial=trial)
+                val = _get_measure_value(
+                    measure_id, measure_value,
+                    measure_level='trial',
+                    trial=trial
+                )
                 trial.measure_values.append(val)
-
 
             # register events
             event_num = 0
@@ -451,7 +466,11 @@ def trial_props(experiment, run, block, trial):
                 values = []
                 for measure_id, measure_value in _convert_measures(event_measures):
                     if measure_value is not None:
-                        val = _get_measure_value(measure_id, measure_value, measure_level='event', trial=trial)
+                        val = _get_measure_value(
+                            measure_id, measure_value,
+                            measure_level='event',
+                            trial=trial
+                        )
                         values.append(val)
 
                 Event(values, event_num, trial)
@@ -463,7 +482,13 @@ def trial_props(experiment, run, block, trial):
     return jsonify(_get_trial_info(trial))
 
 
-def _get_measure_value(measure_id, measure_value, measure_level, trial, add_measure_if_missing=ADD_MISSING_MEASURES):
+def _get_measure_value(
+    measure_id,
+    measure_value,
+    measure_level,
+    trial,
+    add_measure_if_missing=ADD_MISSING_MEASURES
+):
     if measure_level not in ('event', 'trial'):
         raise ValueError("Unsupported measure level: " + measure_level)
 
@@ -476,15 +501,19 @@ def _get_measure_value(measure_id, measure_value, measure_level, trial, add_meas
         if measure is None:
             # create the new measure type
             m_args = {
-                'id':measure_id,
-                'type':'unregistered'
+                'id': measure_id,
+                'type': 'unregistered'
                 }
             m_args[measure_level+'_level'] = True
             measure = Measure(**m_args)
             # register it
             experiment.measures[measure_id] = measure
             # show a warning
-            msg = "Unknown {} measure key: '{}' (value: '{}'). New measure type registered.".format(measure_level, measure_id, measure_value)
+            msg = "Unknown {} measure key: '{}' (value: '{}'). New measure type registered.".format(
+                measure_level,
+                measure_id,
+                measure_value
+            )
             warnings.warn(msg, WrongMeasureKey)
 
         # if the level is incorrect
@@ -492,20 +521,34 @@ def _get_measure_value(measure_id, measure_value, measure_level, trial, add_meas
             # add the level
             setattr(measure, measure_level + '_level', True)
             # show a warning
-            msg = "Measure key '{}'(value: '{}') was not at the {} level. Trial level added.".format(measure_level, measure_id, measure_value)
+            msg = ("Measure key '{}'(value: '{}') was not at the {} level. "
+                   "Trial level added.").format(measure_level, measure_id, measure_value)
             warnings.warn(msg, WrongMeasureKey)
-        return TrialMeasureValue(measure_value, measure) if measure_level is 'trial' else EventMeasureValue(measure_value, measure)
-
+        return (
+            TrialMeasureValue(measure_value, measure) if measure_level is 'trial'
+            else EventMeasureValue(measure_value, measure)
+        )
 
     # case refuse incorrect measure types
     elif measure is None:
-        msg = "Invalid {} measure key: '{}' (value: '{}')".format(measure_level, measure_id, measure_value)
+        msg = "Invalid {} measure key: '{}' (value: '{}')".format(
+            measure_level,
+            measure_id,
+            measure_value
+        )
         warnings.warn(msg, WrongMeasureKey)
     else:
         try:
-            return TrialMeasureValue(measure_value, measure) if measure_level is 'trial' else EventMeasureValue(measure_value, measure)
+            return (
+                TrialMeasureValue(measure_value, measure) if measure_level is 'trial'
+                else EventMeasureValue(measure_value, measure)
+            )
         except MeasureLevelError:
-            msg = "Measure key '{}'(value: '{}') is not at the {} level.".format(measure_id, measure_value, measure_level)
+            msg = "Measure key '{}'(value: '{}') is not at the {} level.".format(
+                measure_id,
+                measure_value,
+                measure_level
+            )
             warnings.warn(msg, WrongMeasureKey)
 
 

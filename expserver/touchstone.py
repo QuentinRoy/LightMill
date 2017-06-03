@@ -15,6 +15,7 @@ def update_experiment(touchstone_file):
     else:
         raise "The experiment {} does not exist".format(xp_id)
 
+
 def create_experiment(touchstone_file):
     exp_dom = ElementTree.parse(touchstone_file).getroot()
     return _parse_experiment(exp_dom)
@@ -38,7 +39,9 @@ def _parse_experiment(dom, exp=None, verbose=False):
         raise "No experiment id."
     exp = exp or Experiment(id=dom.get('id'),
                             name=_nonize_string(dom.get('name')),
-                            factors=[_parse_factor(factor_dom) for factor_dom in dom.findall('factor')],
+                            factors=[
+                                _parse_factor(factor_dom) for factor_dom in dom.findall('factor')
+                            ],
                             author=dom.get('author'),
                             measures=dict((measure.id, measure) for measure in measures),
                             description=_nonize_string(dom.get('description')))
@@ -46,7 +49,7 @@ def _parse_experiment(dom, exp=None, verbose=False):
     run_ids = set(run.id for run in exp.runs)
     for run_dom in dom.findall('run'):
         run_id = run_dom.get('id')
-        if not run_id in run_ids:
+        if run_id not in run_ids:
             if verbose:
                 print('Creation of run {}.'.format(run_id))
             _parse_run(run_dom, exp)
@@ -118,7 +121,9 @@ def _parse_factor_values_string(values_string, experiment):
             value = next(value for value in factor.values if value.id == value_id)
             values.append(value)
         except StopIteration:
-            raise Exception('Factor or factor value not registered: {}={}'.format(factor_id, value_id))
+            raise Exception(
+                'Factor or factor value not registered: {}={}'.format(factor_id, value_id)
+            )
     return values
 
 

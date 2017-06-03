@@ -1,15 +1,14 @@
 __author__ = 'Quentin Roy'
 
 # app must be imported (even if not use)
-from run import app
-from model import *
+from model import Experiment
 import os
-import sys
 import time
 from csv import DictWriter
 from collections import OrderedDict
 
 DELIMITER = ';'
+
 
 def convert_bool(val):
     if str(val).lower() == 'true':
@@ -76,7 +75,9 @@ def create_trial_fields(experiment):
                   (measure for measure in experiment.measures.itervalues() if measure.trial_level),
                   key=lambda x: x.id)}
 
-    field_info = OrderedDict((type_name, OrderedDict()) for type_name in ['header', 'factor', 'measure'])
+    field_info = OrderedDict(
+        (type_name, OrderedDict()) for type_name in ['header', 'factor', 'measure']
+    )
 
     # field info check for name conflicts and create field final names
     for field in iter_field_info(fields):
@@ -85,7 +86,6 @@ def create_trial_fields(experiment):
 
 
 def create_event_fields(experiment):
-
     headers = [('xpId', u'Experiment Name'),
                ('runId', u'Run Id'),
                ('blockNum', u'Block Number'),
@@ -99,7 +99,9 @@ def create_event_fields(experiment):
                   (measure for measure in experiment.measures.itervalues() if measure.event_level),
                   key=lambda x: x.id)}
 
-    field_info = OrderedDict((type_name, OrderedDict()) for type_name in ['header', 'factor', 'measure'])
+    field_info = OrderedDict(
+        (type_name, OrderedDict()) for type_name in ['header', 'factor', 'measure']
+    )
 
     # field info check for name conflicts and create field final names
     for field in iter_field_info(fields):
@@ -161,7 +163,7 @@ def run_csv_export(run, trial_logger, events_log_dir,
             row = get_event_row(event, event_fields, factor_values)
             events_logger.writerow(row)
             if global_event_logger:
-                global_event_logger.writerow(row);
+                global_event_logger.writerow(row)
             event_end = time.time()
             trial_events_time += (event_end - event_start)
 
@@ -171,13 +173,13 @@ def run_csv_export(run, trial_logger, events_log_dir,
         event_export_time += trial_events_time
         event_count += trial_event_count
         trial_count += 1
-        print(' exported ({:.02f} sec, {} events, trial row: {}sec, event rows: {}sec, event mean: {}sec)'.format(
-              trial_duration,
-              trial_event_count,
-              trial_row_end - trial_start,
-              trial_end - event_rows_start,
-              float(trial_events_time) / trial_event_count if trial_event_count else 0))
-
+        print(' exported ({:.02f} sec, {} events, trial row: {}sec, event rows: {}sec'
+              ', event mean: {}sec)'.format(
+                  trial_duration,
+                  trial_event_count,
+                  trial_row_end - trial_start,
+                  trial_end - event_rows_start,
+                  float(trial_events_time) / trial_event_count if trial_event_count else 0))
 
     run_end = time.time()
     print('Run {} exported.'.format(run.id))
@@ -187,7 +189,6 @@ def run_csv_export(run, trial_logger, events_log_dir,
                         round((event_export_time / event_count) * 1000),
                         trial_count,
                         event_count))
-
 
 
 def get_trial_row(trial, fields, factor_values):

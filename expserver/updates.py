@@ -6,7 +6,13 @@ from os import path
 
 
 def add_xp_measure(xp, measure_id, measure_type, trial_level, event_level, measure_name=None):
-    m = Measure(id=measure_id, name=measure_name, type=measure_type, trial_level=trial_level, event_level=event_level)
+    m = Measure(
+        id=measure_id,
+        name=measure_name,
+        type=measure_type,
+        trial_level=trial_level,
+        event_level=event_level
+    )
     xp.measures[m.id] = m
     db.session.commit()
 
@@ -31,6 +37,7 @@ def get_app(database):
     db.init_app(flask_app)
     db.app = flask_app
     return flask_app
+
 
 def set_trials_count(run, number):
     for block in run.blocks:
@@ -64,7 +71,8 @@ def calculate_duration(experiment, start_measure, end_measure, duration_measure,
                     if update:
                         result_val[0].value = exec_duration
                 else:
-                    trial.measure_values.append(TrialMeasureValue(exec_duration, experiment.measures[duration_measure]))
+                    value = TrialMeasureValue(exec_duration, experiment.measures[duration_measure])
+                    trial.measure_values.append(value)
     db.session.commit()
 
 
@@ -77,8 +85,3 @@ if __name__ == '__main__':
     update_measure(xp, id='timestamps.executionEnd', name="Execution End TimeStamp")
     update_measure(xp, id='circle.center.y', name="Circle Center y")
     update_measure(xp, id='circle.center.x', name="Circle Center x")
-    # calculate_duration(xp, 'timestamps.executionStart', 'timestamps.drawingStart', 'durations.reaction', update = True)
-
-    # for run in xp.runs:
-    #    if not run.started():
-    #        set_trials_count(run, 10)
