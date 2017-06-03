@@ -71,6 +71,10 @@ table.gridtable [info] + :not([info]) {
     border-left-width: 2px;
 }
 
+table.gridtable tbody tr {
+    cursor: pointer;
+}
+
 table.gridtable tbody tr * {
     border-width: 1px;
     padding: 8px;

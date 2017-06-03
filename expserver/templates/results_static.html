@@ -3,9 +3,12 @@
 {% block table_body %}{% strip %}
     {% for trial in trials %}
         {% set cycle = cycler('odd', 'even') %}
-        <tr id="trial-results-{{ trial.block_number }}-{{ trial.number }}" trial-number='{{ trial.number }}'
-            block-number='{{ trial.block_number }}'>
-
+        <tr
+            id="trial-results-{{ trial.block_number }}-{{ trial.number }}"
+            trial-number='{{ trial.number }}'
+            block-number='{{ trial.block_number }}'
+            onclick="window.location='/trial/{{ experiment.id }}/{{ run.id }}/{{ trial.block_number }}/{{ trial.number }}/events';"
+        >
             <th class="column-block-num {{ ' ' + cycle.next() }}" column-type='info' info="block_number">
                 {% if trial.measure_block_number != None %}
                     {{ trial.measure_block_number }}
