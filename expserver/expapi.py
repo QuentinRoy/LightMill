@@ -382,6 +382,27 @@ def run_current_trial(experiment, run):
     return jsonify(_get_trial_info(trial))
 
 
+@exp_api.route('/run/<experiment>/<run>/next_trial')
+def run_next_trial(experiment, run):
+    current_trial = run.current_trial()
+    if not current_trial:
+        response = jsonify({
+            'message': 'Run is completed.',
+            'type': 'RunCompleted'
+        })
+        response.status_code = 410
+        return response
+    next_trial = current_trial.next()
+    if not next_trial:
+        response = jsonify({
+            'message': 'Current trial is last.',
+            'type': 'RunCompleted'
+        })
+        response.status_code = 410
+        return response
+    return jsonify(_get_trial_info(next_trial))
+
+
 @exp_api.route('/block/<experiment>/<run>/<int:block>')
 def block_props(experiment, run, block):
     props = {
