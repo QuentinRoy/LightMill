@@ -28,8 +28,9 @@
 
     <table id="table-status">
         {% set cycle = cycler('odd', 'even') %}
-        {% for run in runs %}
-            {% set run_status = run.status() %}
+        {% for run_entry in run_statuses %}
+            {% set run_status = 'completed' if run_entry[1] == run_entry[2] else ('started' if run_entry[1] > 0 else 'unstarted') %}
+            {% set run = run_entry[0] %}
             <tr class="run-row run-{{ run_status }} {{ cycle.next() }}"
                 run-id="{{ run.id }}"
                 onclick="openResultPage('{{ run.id }}');" >

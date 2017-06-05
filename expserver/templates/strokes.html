@@ -135,7 +135,7 @@
                     EXPERIMENT_NAME = "{{ trial.experiment.name }}",
                     EXPERIMENT_ID = "{{ trial.experiment.id }}",
                     RUN_ID = "{{ trial.run.id }}",
-                    MEASURED_BLOCK_NB = {{ trial.block.measure_block_number() }};
+                    MEASURED_BLOCK_NB = {{ trial.block.measured_block_number() }};
 
             function adaptCanvasSize(canvas) {
                 var baseFrameWidth = 768,

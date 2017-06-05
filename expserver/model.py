@@ -66,10 +66,10 @@ class Experiment(db.Model):
         return self.runs.filter_by(id=run_id).one()
 
     def trial_measures(self):
-        return self.measures.filter('Measure.trial_level')
+        return self.measures.filter_by(trial_level=True)
 
     def event_measures(self):
-        return self.measures.filter('Measure.event_level')
+        return self.measures.filter_by(event_level=True)
 
 
 class Run(db.Model):
@@ -114,7 +114,7 @@ class Run(db.Model):
             .filter(Block.run == self)
 
     def current_trial(self):
-        return self.trials.filter(Trial.completion_date == None).first()
+        return self.trials.filter(Trial.completion_date.is_(None)).first()
 
     def __repr__(self):
         return '<{} {} (experiment id: {}, token: {})>' \
@@ -124,13 +124,13 @@ class Run(db.Model):
                     self.token)
 
     def completed(self):
-        exist_query = self.trials.filter(Trial.completion_date == None).exists()
+        exist_query = self.trials.filter(Trial.completion_date.is_(None)).exists()
         session_query = db.session.query(exist_query)
         completed = not session_query.scalar()
         return completed
 
     def started(self):
-        exist_query = self.trials.filter(Trial.completion_date != None).exists()
+        exist_query = self.trials.filter(Trial.completion_date.isnot(None)).exists()
         started = db.session.query(exist_query).scalar()
         return started
 
@@ -200,7 +200,7 @@ class Block(db.Model):
 
     number = db.Column(db.Integer, nullable=False)
     practice = db.Column(db.Boolean)
-    factor_values = db.relationship('FactorValue', secondary=block_values)
+    factor_values = db.relationship('FactorValue', secondary=block_values, lazy='joined')
 
     __table_args__ = (
         db.UniqueConstraint("_run_db_id", "number"),
@@ -228,7 +228,7 @@ class Block(db.Model):
             else None
         )
 
-    def measure_block_number(self):
+    def measured_block_number(self):
         if not self.practice:
             i = 0
             for block in self.run.blocks.order_by(Block.number):
@@ -272,13 +272,13 @@ class Trial(db.Model):
                                                order_by='Trial.number'),
                             lazy='joined')
 
-    factor_values = db.relationship('FactorValue', secondary=trial_factor_values)
+    factor_values = db.relationship('FactorValue', secondary=trial_factor_values, lazy='joined')
     number = db.Column(db.Integer, nullable=False)
     completion_date = db.Column(db.DateTime)
     measure_values = db.relationship('TrialMeasureValue',
                                      cascade="all, delete-orphan",
                                      backref=db.backref('trial'),
-                                     lazy='dynamic')
+                                     lazy='joined')
 
     events = db.relationship('Event',
                              cascade="all, delete-orphan",
@@ -711,7 +711,7 @@ if __name__ == '__main__':
 
             print('Get factor f1: ' + repr(exp.get_factor('f1')))
             print('Last block measured block num: {}'.format(
-                exp.runs[0].blocks[-1].measure_block_number())
+                exp.runs[0].blocks[-1].measured_block_number())
             )
 
     db_uri = os.path.abspath(os.path.join(os.path.dirname(__name__), '../model_test.db'))

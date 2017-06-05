@@ -1,4 +1,0 @@
-flask==0.12.2
--e git://github.com/surfly/gevent.git@adb7b838ed66c13abe5059605730bb4b4531bbcd#egg=gevent
-Flask-SQLAlchemy==2.2
-gevent-websocket==0.10.1

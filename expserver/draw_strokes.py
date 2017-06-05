@@ -260,7 +260,7 @@ def export_run_strokes2(run, base_filter={}, path=STROKE_PATHS):
                     break
             else:
                 img_path = os.path.join(path,
-                                        "{}-{}-{}-{}.pdf".format(startAngle, run.id, trial.block.measure_block_number(),
+                                        "{}-{}-{}-{}.pdf".format(startAngle, run.id, trial.block.measured_block_number(),
                                                                  trial.number))
                 img_path = os.path.abspath(img_path)
                 draw_trial(trial, img_path)
@@ -283,7 +283,7 @@ def export_run_strokes(run, path=STROKE_PATHS, base_filter={}):
                 break
         else:
             img_path = os.path.join(path,
-                                    "{}-{}-{}.pdf".format(run.id, trial.block.measure_block_number(),
+                                    "{}-{}-{}.pdf".format(run.id, trial.block.measured_block_number(),
                                                              trial.number))
             img_path = os.path.abspath(img_path)
             draw_trial(trial, img_path)
@@ -341,7 +341,7 @@ def main3(data_path):
             .filter(Block.run == run).all()
         for trial in trials:
             stroke = Stroke.from_trial(trial)
-            mbn = trial.block.measure_block_number()
+            mbn = trial.block.measured_block_number()
             row = [mbn if mbn else '', trial.number]
             if not stroke.empty():
                 row += [x for x in stroke.points[-1]]

@@ -1,19 +1,17 @@
 __author__ = 'Quentin Roy'
 
-import sys
 import os
 from flask import Flask
-from werkzeug import serving
 from expapi import exp_api
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
 import default_settings
 
-
 # app creation
 app = Flask(__name__.split('.')[0])
 app.config['SQLALCHEMY_DATABASE_URI'] = default_settings.SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = __debug__
 app.register_blueprint(exp_api)
 app.jinja_env.add_extension("jinja2htmlcompress.SelectiveHTMLCompress")
 

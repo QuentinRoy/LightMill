@@ -5,6 +5,7 @@ import uuid
 import time
 import json
 import warnings
+import itertools
 from collections import OrderedDict
 from StringIO import StringIO
 from flask import jsonify, redirect, request, render_template, Response
@@ -12,9 +13,10 @@ from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue
-from model import Measure, MeasureLevelError
+from model import Measure, MeasureLevelError, FactorValue, block_values
 from touchstone import create_experiment, parse_experiment_id
 
 
@@ -189,7 +191,8 @@ def expe_props(experiment):
             'tag': factor.tag,
             'name': factor.name,
             'type': factor.type,
-            'values': dict((value.id, value.name) for value in factor.values)
+            'values': dict((value.id, value.name) for value in factor.values),
+            'default_value': factor.default_value.id if factor.default_value else None
         }
         if factor.default_value:
             factor_dict['default_value'] = factor.default_value.id
@@ -237,25 +240,29 @@ def expe_runs(experiment):
                       request.is_xhr)
     if json_requested:
         start = time.time()
-        runs_props = []
-        for run in experiment.runs:
-            runs_props.append({
-                'id': run.id,
-                'completed': run.completed(),
-                'started': run.started(),
-                'locked': run.locked
-            })
+        runs_props = [{
+            'id': run.id,
+            'completed': run.completed(),
+            'started': run.started(),
+            'locked': run.locked
+        } for run in experiment.runs]
         return jsonify({
             'runs': runs_props,
             'req_duration': time.time() - start
-            })
+        })
     else:
-        runs = experiment.runs.all()
+        run_statuses = (db.session.query(Run,
+                                         func.count(Trial.completion_date),
+                                         func.count(Trial.number))
+                        .outerjoin(Block, Trial)
+                        .group_by(Run.id)).all()
+
+        print('run_statuses', run_statuses)
         return render_template('xp_status.html',
-                               runs=runs,
+                               run_statuses=run_statuses,
                                experiment=experiment,
-                               completed_nb=len([run for run in runs if run.completed()]),
-                               total_nb=len(runs))
+                               completed_nb=len(filter(lambda e: e[1] == e[2], run_statuses)),
+                               total_nb=len(run_statuses))
 
 
 @exp_api.route('/import', methods=['POST'])
@@ -275,24 +282,23 @@ def expe_import():
         return expe_runs(experiment)
 
 
-@exp_api.route('/experiment/<experiment>/next_run')
+@exp_api.route('/experiment/<experiment>/available_run')
 def get_free_run(experiment):
-    started_runs = experiment.runs.filter(Run.token == None) \
-                             .join(Block, Trial).filter(Trial.completion_date == None).all()
-    target_run = None
-    for run in experiment.runs:
-        if run not in started_runs:
-            target_run = run
-            break
-    if target_run:
-        return jsonify(run_info(run))
-    else:
-        response = jsonify({
-            'message': 'The experiment is completed.',
-            'type': 'ExperimentAlreadyCompleted'
-        })
-        response.status_code = 410
-        return response
+    available_run = (experiment.runs
+                     .outerjoin(Block, Trial)
+                     .filter(Run.token.is_(None))
+                     .having(func.count(Trial.completion_date) == 0)
+                     .group_by(Run)).first()
+
+    if available_run:
+        return jsonify(run_info(available_run))
+
+    response = jsonify({
+        'message': 'No available runs.',
+        'type': 'NoAvailableRuns'
+    })
+    response.status_code = 410
+    return response
 
 
 @exp_api.route('/run/<experiment>/<run>')
@@ -412,7 +418,7 @@ def run_next_trial(experiment, run):
 def block_props(experiment, run, block):
     props = {
         'number': block.number,
-        'measure_block_number': block.measure_block_number(),
+        'measured_block_number': block.measured_block_number(),
         'values': dict((value.factor.id, value.id) for value in block.factor_values),
         'trial_count': block.trials.count()
     }
@@ -588,39 +594,6 @@ def _get_measures_paths(measures):
         yield [], measures
 
 
-def _get_trial_info(trial):
-    values = dict((value.factor.id, value.id) for value in trial.factor_values)
-    block_values = dict((value.factor.id, value.id)
-                        for value in trial.block.factor_values)
-    default_values = {}
-    missing_values = []
-    for factor in trial.experiment.factors:
-        if factor.id not in values and factor.id not in block_values:
-            if factor.default_value:
-                default_values[factor.id] = factor.default_value.id
-            else:
-                missing_values.append(factor.id)
-
-    answer = {
-        'number': trial.number,
-        'block_number': trial.block.number,
-        'practice': trial.block.practice,
-        'measure_block_number': trial.block.measure_block_number(),
-        'values': values,
-        'block_values': block_values,
-        'default_values': default_values,
-        'missing_values': missing_values,
-        'experiment_id': trial.experiment.id,
-        'run_id': trial.run.id,
-        'total': trial.block.length()
-
-    }
-    if trial.completion_date:
-        answer['completion_date'] = int(time.mktime(
-            trial.completion_date.timetuple()))
-    return answer
-
-
 @exp_api.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/events')
 def events(experiment, run, block, trial):
     event_measures = sorted((measure for measure
@@ -638,60 +611,157 @@ def events(experiment, run, block, trial):
 @exp_api.route('/run/<experiment>/<run>/results')
 def run_results(experiment, run):
     factors = sorted(experiment.factors, key=lambda x: x.id)
-    trial_measures = sorted((measure for measure
-                            in experiment.measures.itervalues()
-                            if measure.trial_level),
+    trial_measures = sorted((measure
+                             for measure in experiment.measures.itervalues()
+                             if measure.trial_level),
                             key=lambda x: x.id)
 
     return render_template('results_static.html',
-                           trials=[
-                               _get_trial_measure_info(trial)
-                               for trial in run.trials.filter(
-                                   Trial.completion_date != None)
-                           ],
+                           trials=list(_get_run_trials_info(run, completed_only=True)),
                            trial_measures=trial_measures,
                            factors=factors,
                            run=run,
                            experiment=experiment)
 
 
-@exp_api.route('/test')
-def test():
-    return render_template('websock_test.html')
+def _get_run_trials_info(run, completed_only=False):
+    exp_values = list(factor.default_value
+                      for factor
+                      in run.experiment.factors
+                      if factor.default_value)
+    measured_block_num = 0
+    for block in run.blocks:
+        for trial in _get_block_trials_info(block,
+                                            completed_only=completed_only,
+                                            exp_values=exp_values,
+                                            measured_block_num=measured_block_num
+                                            if not block.practice
+                                            else None):
+            yield trial
+        else:
+            if completed_only:
+                break
+        if not block.practice:
+            measured_block_num += 1
 
 
-@exp_api.route('/api')
-def api():
-    if request.environ.get('wsgi.websocket'):
-        ws = request.environ['wsgi.websocket']
-        while True:
-            message = ws.receive()
-            ws.send(message)
-    return
+def _get_block_trials_info(block,
+                           completed_only=False,
+                           exp_values=None,
+                           measured_block_num=None,
+                           block_values=None,
+                           measures=True,
+                           short=False):
+    experiment = block.run.experiment
+    exp_values = list(factor.default_value
+                      for factor
+                      in experiment.factors
+                      if factor.default_value) if exp_values is None else exp_values
+    block_values = block.factor_values
+    trial_query = block.trials
+    if completed_only:
+        trial_query = trial_query.filter(Trial.completion_date.isnot(None))
+    for trial in trial_query:
+        factor_values = dict((value.factor.id, value.id)
+                             for value
+                             in itertools.chain(exp_values,
+                                                block_values,
+                                                trial.factor_values))
+
+        result = {
+            'trial_number': trial.number,
+            'factor_values': factor_values,
+            'completion_date': _convert_date(trial.completion_date)
+        }
+        if not short:
+            measured_block_num = (measured_block_num
+                                  if measured_block_num is not None or block.practice
+                                  else block.measured_block_number())
+            result.update({
+                'experiment_id': experiment.id,
+                'run_id': trial.run.id,
+                'block_number': block.number,
+                'practice': block.practice,
+            })
+            if measured_block_num:
+                result.update({
+                    'measured_block_number': measured_block_num
+                })
+        if measures:
+            result.update({
+                'measures': dict((m_value.measure.id, m_value.value)
+                                 for m_value
+                                 in trial.measure_values)
+            })
+        yield result
 
 
-def _get_trial_measure_info(trial):
-    return {
-        'measures': _get_trial_measure(trial),
-        'factors': dict((f_value.factor.id, f_value)
-                        for f_value in trial.iter_all_factor_values()),
-        'number': trial.number,
+def _get_trial_info(trial):
+    factors = trial.experiment.factors
+    exp_values = (factor.default_value for factor in factors if factor.default_value)
+    block_values = (value for value in trial.block.factor_values)
+    factor_values = dict((value.factor.id, value.id)
+                         for value
+                         in itertools.chain(exp_values, block_values, trial.factor_values))
+    measures = dict((m_value.measure.id, m_value.value)
+                    for m_value
+                    in trial.measure_values)
+    answer = {
+        'experiment_id': trial.experiment.id,
+        'run_id': trial.run.id,
+        'trial_number': trial.number,
         'block_number': trial.block.number,
-        'measure_block_number': trial.block.measure_block_number(),
-        'practice': trial.block.practice
+        'measured_block_number': trial.block.measured_block_number(),
+        'factor_values': factor_values,
+        'measures': measures,
+        'practice': trial.block.practice,
+        'completion_date': _convert_date(trial.completion_date)
     }
+    # if trial.completion_date:
+    #     answer['completion_date'] = int(time.mktime(
+    #         trial.completion_date.timetuple()))
+    return answer
 
 
-def _get_trial_measure(trial):
-    measure_values = dict()
-    for measure_value in trial.measure_values:
-        measure_values[measure_value.measure.id] = measure_value.value
-    return measure_values
+def _convert_date(date):
+    return int(time.mktime(date.timetuple())) if date else None
 
 
 @exp_api.route('/run/<experiment>/<run>/trials')
 def run_trials(experiment, run):
-    trials = []
-    for trial in run.trials:
-        trials.append(_get_trial_info(trial))
-    return Response(json.dumps(trials),  mimetype='application/json')
+    return Response(json.dumps(list(_get_run_trials_info(run))),  mimetype='application/json')
+
+
+def _get_run_plan(run):
+    exp_values = list(factor.default_value
+                      for factor
+                      in run.experiment.factors
+                      if factor.default_value)
+    measured_block_num = 0
+    blocks = []
+    for block in run.blocks:
+        block_info = {
+            'experiment_id': run.experiment.id,
+            'run_id': run.id,
+            'block_number': block.number,
+            'block_factor_values': dict((value.factor.id, value.id)
+                                        for value
+                                        in block.factor_values),
+            'trials': list(_get_block_trials_info(block,
+                                                  exp_values=exp_values,
+                                                  short=True,
+                                                  measures=False)),
+            'practice': block.practice
+        }
+        if not block.practice:
+            block_info.update({
+                'measured_block_number': measured_block_num
+            })
+            measured_block_num += 1
+        blocks.append(block_info)
+    return blocks
+
+
+@exp_api.route('/run/<experiment>/<run>/plan')
+def run_plan(experiment, run):
+    return Response(json.dumps(list(_get_run_plan(run))),  mimetype='application/json')

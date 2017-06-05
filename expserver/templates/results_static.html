@@ -10,8 +10,8 @@
             onclick="window.location='/trial/{{ experiment.id }}/{{ run.id }}/{{ trial.block_number }}/{{ trial.number }}/events';"
         >
             <th class="column-block-num {{ ' ' + cycle.next() }}" column-type='info' info="block_number">
-                {% if trial.measure_block_number != None %}
-                    {{ trial.measure_block_number }}
+                {% if trial.measured_block_number != None %}
+                    {{ trial.measured_block_number }}
                 {% endif %}
             </th>
             <th class="column-trial-num {{ ' ' +cycle.next() }}" column-type='info' info ="trial_number">
