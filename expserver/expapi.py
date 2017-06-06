@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue
-from model import Measure, MeasureLevelError, FactorValue, block_values
+from model import Measure, MeasureLevelError
 from touchstone import create_experiment, parse_experiment_id
 
 
