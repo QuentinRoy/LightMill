@@ -33,12 +33,19 @@ The results will be exported in the export folder.
 The experiment described in `experiment.xml`:code: at the root folder will be automatically imported into the database
 at server startup (if not already in).
 
-----------------
-Locked run issue
-----------------
 
-To avoid concurrent update, when an experiment run is being used, it is automatically locked so that only one client can modify it. Most of the time, run will automatically unlock when the client disconnects. However, it can happen that the client is 'killed' without the possibility to warn the server (in particular on mobile devices), and thus the run remains locked.
+-------
+Monitor
+-------
 
-You can manually unlock a run by going on the run page from the web interface and add :code:`force_unlock` after the node id—e.g. http://localhost:5000/run/myxp/S0/force_unlock.
+A web interface is available by connecting to the server from a browser (by default, http://localhost:5000).
 
-One day I'll add a button for that.
+----------
+Locked run
+----------
+
+To avoid concurrent update, client needs to acquire a run to register trial results.
+
+You can manually unlock a run by going on the run page from the web interface and by clicking on the lock icon.
+This can be useful if a client crashed and a new lock need to be acquire to continue the experiment.
+However, doing so will most likely result in an error for an ongoing client.
