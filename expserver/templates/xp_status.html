@@ -10,12 +10,6 @@
         <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/xp_status.css') }}">
     {% endblock %}
 
-    <script>
-        function openResultPage(runId){
-            window.open("/run/{{ experiment.id }}/"+runId+'/results', '_blank');
-        }
-    </script>
-
 </head>
 
 <body>
@@ -27,16 +21,27 @@
     </div>
 
     <table id="table-status">
+        <colgroup>
+            <col class="col-run-info" span="2">
+            <col class="col-run-unlock">
+        </colgroup>
         {% set cycle = cycler('odd', 'even') %}
         {% for run_entry in run_statuses %}
             {% set run_status = 'completed' if run_entry[1] == run_entry[2] else ('started' if run_entry[1] > 0 else 'unstarted') %}
             {% set run = run_entry[0] %}
-            <tr class="run-row run-{{ run_status }} {{ cycle.next() }}"
-                run-id="{{ run.id }}"
-                onclick="openResultPage('{{ run.id }}');" >
-                <th class="run-id">{{ run.id }}</th>
-                <td class="run-status">
-                    {{ run_status }}
+            {% set run_ref = '/run/' + experiment.id + '/' + run.id + '/results' %}
+            <tr class="run-row run-{{ run_status }} {{ cycle.next() }}" run-id="{{ run.id }}">
+                <th class="run-id"><a class="run-link" href="{{run_ref}}"><span class="cell-content">{{ run.id }}</span></a></th>
+                <td class="run-status"><a class="run-link" href="{{run_ref}}"><span class="cell-content">{{ run_status }}</span></a></td>
+                <td class="run-lock">
+                  {% if run.locked %}
+                    <span class="cell-content"><a
+                      href="/run/{{experiment.id}}/{{ run.id }}/force_unlock"
+                      title="Unlock run {{ run.id }}"
+                      onclick="return confirm('Unlock run {{ run.id }}?\nThis might interrupt a participant.')"
+                      class="run-lock-link"
+                    ><img class="unlock-icon" src="{{ url_for('static', filename='images/padlock-unlock.svg') }}"></img><img class="lock-icon" src="{{ url_for('static', filename='images/padlock.svg') }}"></img></a></span>
+                  {% endif %}
                 </td>
             </tr>
         {% endfor %}

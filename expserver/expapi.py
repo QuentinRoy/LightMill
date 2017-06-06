@@ -364,8 +364,12 @@ def unlock_run(experiment, run):
 def force_unlock_run(experiment, run):
     run.token = None
     db.session.commit()
-    print("Run {} unlocked.".format(repr(run)))
-    return jsonify(run_info(run))
+    json_requested = (
+        'json' in request.args and request.args['json'].lower() == 'true'
+    ) or request.is_xhr
+    if json_requested:
+        return jsonify(run_info(run))
+    return redirect(url_for('.expe_runs', experiment=experiment.id))
 
 
 def run_info(run):

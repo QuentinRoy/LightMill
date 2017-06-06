@@ -11,16 +11,50 @@ body{
     text-align: center;
 }
 
+#table-status .cell-content {
+    display: block;
+    padding: 5px 10px;
+}
+
 #table-status td, #table-status th {
-    padding: 3px 5px;
+  padding: 0;
+  margin: 0;
+}
+
+#table-status .run-link {
+    display:block;
+    height:100%;
+    width:100%;
+    text-decoration: inherit;
+    color: inherit;
 }
 
 #table-status tr.run-row .run-id {
     text-align: left;
+    width: 100%;
 }
 
 #table-status tr.run-row .run-status {
     text-align: right;
+}
+
+#table-status .run-lock .lock-icon {
+    height: 0.98em;
+    margin-bottom: -.2em;
+    margin-top: -.02em;
+}
+
+#table-status .run-lock .unlock-icon {
+  height: 1em;
+  margin-bottom: -.2em;
+  margin-top: -.3em;
+}
+
+#table-status .run-lock .run-lock-link:hover .lock-icon {
+    display: none;
+}
+#table-status .run-lock .run-lock-link:not(:hover) .unlock-icon {
+    display: none;
 }
 
 #table-status tr.run-row[class~="run-unstarted"][class~='even'] {
@@ -44,10 +78,13 @@ body{
 }
 
 #table-status tr.run-row:hover {
-    cursor: pointer;
     color:white;
 }
 
 #table-status tr.run-row[class~="run-unstarted"][class~='odd']:hover {
     color:lightgray;
+}
+
+#table-status tr.run-row:hover .lock-icon, #table-status tr.run-row:hover .unlock-icon {
+    opacity: .7;
 }
