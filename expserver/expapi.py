@@ -624,15 +624,17 @@ def _get_run_trials_info(run, completed_only=False):
                       if factor.default_value)
     measured_block_num = 0
     for block in run.blocks:
+        is_block_started = False
         for trial in _get_block_trials_info(block,
                                             completed_only=completed_only,
                                             exp_values=exp_values,
-                                            measured_block_num=measured_block_num
-                                            if not block.practice
-                                            else None):
+                                            measured_block_num=(None
+                                                                if block.practice
+                                                                else measured_block_num)):
             yield trial
+            is_block_started = True
         else:
-            if completed_only:
+            if completed_only and not is_block_started:
                 break
         if not block.practice:
             measured_block_num += 1
