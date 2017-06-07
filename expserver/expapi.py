@@ -252,8 +252,6 @@ def expe_runs(experiment):
                                          func.count(Trial.number))
                         .outerjoin(Block, Trial)
                         .group_by(Run.id)).all()
-
-        print('run_statuses', run_statuses)
         return render_template('xp_status.html',
                                run_statuses=run_statuses,
                                experiment=experiment,
@@ -509,7 +507,7 @@ def _get_measure_value(
             m_args = {
                 'id': measure_id,
                 'type': 'unregistered'
-                }
+            }
             m_args[measure_level+'_level'] = True
             measure = Measure(**m_args)
             # register it
