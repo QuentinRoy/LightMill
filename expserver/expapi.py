@@ -15,7 +15,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import func
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue
-from model import Measure, MeasureLevelError
+from model import Measure, MeasureLevelError, FactorValue, Factor
 from touchstone import create_experiment, parse_experiment_id
 
 
@@ -607,10 +607,14 @@ def run_results(experiment, run):
                              for measure in experiment.measures.itervalues()
                              if measure.trial_level),
                             key=lambda x: x.id)
-
+    factor_values_names = dict(db.session.query(FactorValue.id, FactorValue.name)
+                               .join(FactorValue.factor)
+                               .filter(Factor.experiment == experiment)
+                               .filter(FactorValue.name.isnot(None)))
     return render_template('results_static.html',
                            trials=list(_get_run_trials_info(run, completed_only=True)),
                            trial_measures=trial_measures,
+                           factor_values_names=factor_values_names,
                            factors=factors,
                            run=run,
                            experiment=experiment)
@@ -668,16 +672,16 @@ def _get_block_trials_info(block,
             'completionDate': _convert_date(trial.completion_date)
         }
         if not short:
-            measured_block_num = (measured_block_num
-                                  if measured_block_num is not None or block.practice
-                                  else block.measured_block_number())
+            measured_block_num = (block.measured_block_number()
+                                  if measured_block_num is None and not block.practice
+                                  else measured_block_num)
             result.update({
                 'experimentId': experiment.id,
                 'runId': trial.run.id,
                 'blockNumber': block.number,
                 'practice': block.practice,
             })
-            if measured_block_num:
+            if measured_block_num is not None:
                 result.update({
                     'measuredBlockNumber': measured_block_num
                 })

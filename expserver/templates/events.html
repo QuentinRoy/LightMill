@@ -25,25 +25,21 @@
 
     <div id="container">
         {% block content %}{% strip %}
-            <table class="gridtable" id='events' run='{{ run.id }}' experiment='{{ experiment.id }}' block='{{ block.number }}' trial='{{ trial.number }}'>
+            <table class="gridtable" id='events' data-run='{{ run.id }}' data-experiment='{{ experiment.id }}' data-block='{{ block.number }}' data-trial='{{ trial.number }}'>
                 <thead>
                 {%- block table_head -%}
                     {% set cycle = cycler('odd', 'even') %}
                     <tr id='events-header' class='table-header'>
 
-                        <th class='column-event-number {{ " " + cycle.next() }}' column-type='info' info='event_number'>
+                        <th class='column-event-number {{ " " + cycle.next() }}' data-column-type='info' data-info='event_number'>
                             Event number
                         </th>
 
                         {% for measure in event_measures %}
                             <th class='column-{{ measure.id }}-measure {{ ' ' + cycle.next() }}'
-                                column-type='measure' measure='{{ measure.id }}'
+                                data-column-type='measure' data-measure='{{ measure.id }}'
                                 title='measure id: {{ ' '+ measure.id }}'>
-                                {%- if measure.name != None -%}
-                                    {{- measure.name -}}
-                                {%- else -%}
-                                    {{- measure.id -}}
-                                {% endif %}
+                                {{- measure.name or measure.id -}}
                             </th>
                         {% endfor %}
                     </tr>
@@ -54,17 +50,17 @@
                     {% for event in trial.events %}
                         {% set cycle = cycler('odd', 'even') %}
                         <tr id="event-{{ event.number }}"
-                            event-number='{{ event.number }}'>
+                            data-event-number='{{ event.number }}'>
 
-                            <th class="column-event-number {{ ' ' + cycle.next() }}" column-type='info'
-                                info="event-number">
+                            <th class="column-event-number {{ ' ' + cycle.next() }}" data-column-type='info'
+                                data-info="event-number">
                                 {{ event.number }}
                             </th>
 
 
                             {% for measure in event_measures %}
-                                <td class="column-{{ measure.id }}-measure {{ ' '+cycle.next() }}" column-type='measure'
-                                    measure='{{ measure.id }}'>
+                                <td class="column-{{ measure.id }}-measure {{ ' '+cycle.next() }}" data-column-type='measure'
+                                    data-measure='{{ measure.id }}'>
                                     {% if measure.id in event.measure_values %}
                                         {{ event.measure_values[measure.id].value }}
                                     {% endif %}

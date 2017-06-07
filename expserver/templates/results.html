@@ -25,28 +25,28 @@
 
     <div id="container">
         {% block content %}{% strip %}
-            <table class="gridtable" id='trial-results' run='{{ run.id }}' experiment='{{ experiment.id }}'>
+            <table class="gridtable" id='trial-results' data-run='{{ run.id }}' data-experiment='{{ experiment.id }}'>
                 <thead>
                 {%- block table_head -%}
                     {% set cycle = cycler('odd', 'even') %}
                     <tr id='trial-results-header' class='table-header'>
-                        <th class='column-block-num {{ ' ' + cycle.next() }}' column-type='info' info="block_number">
+                        <th class='column-block-num {{ ' ' + cycle.next() }}' data-column-type='info' data-info="block_number">
                             Block number
                         </th>
-                        <th class='column-trial-num {{ ' ' + cycle.next() }}' column-type='info' info="trial_number">
+                        <th class='column-trial-num {{ ' ' + cycle.next() }}' data-column-type='info' data-info="trial_number">
                             Trial number
                         </th>
                         {% for factor in factors %}
                             <th title='factor id: {{ ' ' + factor.id }}'
                                 class='column-{{ factor.id }}-factor {{ ' ' + cycle.next() }}'
-                                column-type='factor' factor='{{ factor.id }}'>
+                                data-column-type='factor' data-factor='{{ factor.id }}'>
                                   {{- factor.name or factor.id-}}
                             </th>
                         {% endfor %}
 
                         {% for measure in trial_measures %}
                             <th class='column-{{ measure.id }}-measure {{ ' ' + cycle.next() }}'
-                                column-type='measure' measure='{{ measure.id }}'
+                                data-column-type='measure' data-measure='{{ measure.id }}'
                                 title='measure id: {{ ' '+ measure.id }}'>
                                   {{- measure.name or measure.id -}}
                             </th>

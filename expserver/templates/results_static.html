@@ -4,37 +4,31 @@
     {% for trial in trials %}
         {% set cycle = cycler('odd', 'even') %}
         <tr
-            id="trial-results-{{ trial.block_number }}-{{ trial.number }}"
-            trial-number='{{ trial.number }}'
-            block-number='{{ trial.block_number }}'
-            onclick="window.location='/trial/{{ experiment.id }}/{{ run.id }}/{{ trial.block_number }}/{{ trial.number }}/events';"
+            id="trial-results-{{ trial.blockNumber }}-{{ trial.number }}"
+            data-trial-number='{{ trial.number }}'
+            data-block-number='{{ trial.blockNumber }}'
+            onclick="window.location='/trial/{{ experiment.id }}/{{ run.id }}/{{ trial.blockNumber }}/{{ trial.number }}/events';"
         >
-            <th class="column-block-num {{ ' ' + cycle.next() }}" column-type='info' info="block_number">
-                {% if trial.measured_block_number != None %}
-                    {{ trial.measured_block_number }}
-                {% endif %}
+            <th class="column-block-num {{ ' ' + cycle.next() }}" data-column-type='info' data-info="block_number">
+                {{ trial.measuredBlockNumber }}
             </th>
-            <th class="column-trial-num {{ ' ' +cycle.next() }}" column-type='info' info ="trial_number">
+            <th class="column-trial-num {{ ' ' +cycle.next() }}" data-column-type='info' data-info="trial_number">
                 {{ trial.number }}
             </th>
 
             {%- for factor in factors -%}
-                <td class="column-{{ factor.id }}-factor {{ ' ' +cycle.next() }}" column-type='factor'
-                    factor='{{ factor.id }}'>
-                    {%- if factor.id in trial.factors -%}
-                        {% set factor_value = trial.factors[factor.id] %}
-                        {% if factor_value.name %}
-                            {{ factor_value.name }}
-                        {% else %}
-                            {{ factor_value.id }}
-                        {% endif %}
-                    {%- endif -%}
+                <td class="column-{{ factor.id }}-factor {{ ' ' +cycle.next() }}" data-column-type='factor'
+                    data-factor='{{ factor.id }}'>
+                    {% set value_id = trial.factorValues[factor.id] %}
+                    {%- if value_id -%}
+                        {{ factor_values_names[value_id] or value_id }}
+                    {% endif %}
                 </td>
             {%- endfor -%}
 
             {% for measure in trial_measures %}
-                <td class="column-{{ measure.id }}-measure {{ ' '+cycle.next() }}" column-type='measure'
-                    measure='{{ measure.id }}'>
+                <td class="column-{{ measure.id }}-measure {{ ' '+cycle.next() }}" data-column-type='measure'
+                    data-measure='{{ measure.id }}'>
                     {% if measure.id in trial.measures %}
                         {{ trial.measures[measure.id] }}
                     {% endif %}
