@@ -184,7 +184,6 @@ def index():
 
 @exp_api.route('/experiment/<experiment>')
 def expe_props(experiment):
-    start = time.time()
     factors = {}
     for factor in experiment.factors:
         factor_dict = {
@@ -192,7 +191,7 @@ def expe_props(experiment):
             'name': factor.name,
             'type': factor.type,
             'values': dict((value.id, value.name) for value in factor.values),
-            'default_value': factor.default_value.id if factor.default_value else None
+            'defaultValue': factor.default_value.id if factor.default_value else None
         }
         if factor.default_value:
             factor_dict['default_value'] = factor.default_value.id
@@ -210,8 +209,7 @@ def expe_props(experiment):
         'description': experiment.description,
         'runs': [run.id for run in experiment.runs],
         'factors': factors,
-        'measures': measures,
-        'req_duration': time.time() - start
+        'measures': measures
     }
     return jsonify(exp_data)
 
@@ -219,8 +217,8 @@ def expe_props(experiment):
 @exp_api.route('/experiment/<experiment>/measures')
 def sorted_measures(experiment):
     measures = {
-        "trial_level": OrderedDict(),
-        "event_level": OrderedDict()
+        "trialLevel": OrderedDict(),
+        "eventLevel": OrderedDict()
     }
     for measure in sorted(experiment.measures.values(), key=lambda m: m.id):
         if measure.trial_level:
@@ -239,7 +237,6 @@ def expe_runs(experiment):
                       request.args['json'].lower() == 'true' or
                       request.is_xhr)
     if json_requested:
-        start = time.time()
         runs_props = [{
             'id': run.id,
             'completed': run.completed(),
@@ -247,8 +244,7 @@ def expe_runs(experiment):
             'locked': run.locked
         } for run in experiment.runs]
         return jsonify({
-            'runs': runs_props,
-            'req_duration': time.time() - start
+            'runs': runs_props
         })
     else:
         run_statuses = (db.session.query(Run,
@@ -328,8 +324,8 @@ def lock_run(experiment, run):
     print("Run {} locked.".format(repr(run)))
     return jsonify({
         'token': token,
-        'run_id': run.id,
-        'experiment_id': experiment.id,
+        'runId': run.id,
+        'experimentId': experiment.id,
     })
 
 
@@ -375,11 +371,11 @@ def force_unlock_run(experiment, run):
 def run_info(run):
     return {
         'id': run.id,
-        'experiment_id': run.experiment.id,
+        'experimentId': run.experiment.id,
         'completed': run.completed(),
         'started': run.started(),
-        'trial_count': run.trial_count(),
-        'block_count': run.block_count(),
+        'trialCount': run.trial_count(),
+        'blockCount': run.block_count(),
         'locked': run.locked
     }
 
@@ -422,9 +418,9 @@ def run_next_trial(experiment, run):
 def block_props(experiment, run, block):
     props = {
         'number': block.number,
-        'measured_block_number': block.measured_block_number(),
-        'values': dict((value.factor.id, value.id) for value in block.factor_values),
-        'trial_count': block.trials.count()
+        'measuredBlockNumber': block.measured_block_number(),
+        'factorValues': dict((value.factor.id, value.id) for value in block.factor_values),
+        'trialCount': block.trials.count()
     }
     return jsonify(props)
 
@@ -673,23 +669,23 @@ def _get_block_trials_info(block,
                                                 trial.factor_values))
 
         result = {
-            'trial_number': trial.number,
-            'factor_values': factor_values,
-            'completion_date': _convert_date(trial.completion_date)
+            'number': trial.number,
+            'factorValues': factor_values,
+            'completionDate': _convert_date(trial.completion_date)
         }
         if not short:
             measured_block_num = (measured_block_num
                                   if measured_block_num is not None or block.practice
                                   else block.measured_block_number())
             result.update({
-                'experiment_id': experiment.id,
-                'run_id': trial.run.id,
-                'block_number': block.number,
+                'experimentId': experiment.id,
+                'runId': trial.run.id,
+                'blockNumber': block.number,
                 'practice': block.practice,
             })
             if measured_block_num:
                 result.update({
-                    'measured_block_number': measured_block_num
+                    'measuredBlockNumber': measured_block_num
                 })
         if measures:
             result.update({
@@ -711,15 +707,15 @@ def _get_trial_info(trial):
                     for m_value
                     in trial.measure_values)
     answer = {
-        'experiment_id': trial.experiment.id,
-        'run_id': trial.run.id,
-        'trial_number': trial.number,
-        'block_number': trial.block.number,
-        'measured_block_number': trial.block.measured_block_number(),
-        'factor_values': factor_values,
+        'experimentId': trial.experiment.id,
+        'runId': trial.run.id,
+        'number': trial.number,
+        'blockNumber': trial.block.number,
+        'measuredBlockNumber': trial.block.measured_block_number(),
+        'factorValues': factor_values,
         'measures': measures,
         'practice': trial.block.practice,
-        'completion_date': _convert_date(trial.completion_date)
+        'completionDate': _convert_date(trial.completion_date)
     }
     # if trial.completion_date:
     #     answer['completion_date'] = int(time.mktime(
@@ -745,12 +741,8 @@ def _get_run_plan(run):
     blocks = []
     for block in run.blocks:
         block_info = {
-            'experiment_id': run.experiment.id,
-            'run_id': run.id,
-            'block_number': block.number,
-            'block_factor_values': dict((value.factor.id, value.id)
-                                        for value
-                                        in block.factor_values),
+            'number': block.number,
+            'factorValues': dict((value.factor.id, value.id) for value in block.factor_values),
             'trials': list(_get_block_trials_info(block,
                                                   exp_values=exp_values,
                                                   short=True,
@@ -759,7 +751,7 @@ def _get_run_plan(run):
         }
         if not block.practice:
             block_info.update({
-                'measured_block_number': measured_block_num
+                'measuredBlockNumber': measured_block_num
             })
             measured_block_num += 1
         blocks.append(block_info)
