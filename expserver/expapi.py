@@ -309,7 +309,7 @@ def run_props(experiment, run):
 @exp_api.route('/run/<experiment>/<run>/lock')
 def lock_run(experiment, run):
     token = None
-    if run.locked:
+    if run.locked and not __debug__:
         response = jsonify({
             'message': 'Run {} of {} is already locked.'.format(run.id, experiment.id),
             'type': 'RunAlreadyLocked'
