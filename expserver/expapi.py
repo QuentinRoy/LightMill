@@ -311,14 +311,9 @@ def lock_run(experiment, run):
         response.status_code = 405
         return response
 
-    while token is None:
-        try:
-            token = str(uuid.uuid4())
-            run.token = token
-            db.session.commit()
-        except IntegrityError:
-            # that should never happen but... Who knows?
-            token = None
+    token = str(uuid.uuid4())
+    run.token = token
+    db.session.commit()
     print("Run {} locked.".format(repr(run)))
     return jsonify({
         'token': token,
