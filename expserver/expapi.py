@@ -12,7 +12,6 @@ from flask import jsonify, redirect, request, render_template, Response
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue
