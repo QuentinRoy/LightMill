@@ -9,6 +9,7 @@ import itertools
 from collections import OrderedDict
 from StringIO import StringIO
 from flask import jsonify, redirect, request, render_template, Response
+from flask import current_app as app
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
@@ -20,8 +21,6 @@ from touchstone import create_experiment, parse_experiment_id
 
 
 exp_api = Blueprint('exp_api', os.path.splitext(__name__)[0])
-
-ADD_MISSING_MEASURES = True
 
 
 class UnknownElement(Exception):
@@ -302,7 +301,7 @@ def run_props(experiment, run):
 @exp_api.route('/run/<experiment>/<run>/lock')
 def lock_run(experiment, run):
     token = None
-    if run.locked and not __debug__:
+    if run.locked and not ('UNPROTECTED_RUNS' in app.config and app.config['UNPROTECTED_RUNS']):
         response = jsonify({
             'message': 'Run {} of {} is already locked.'.format(run.id, experiment.id),
             'type': 'RunAlreadyLocked'
@@ -448,13 +447,15 @@ def trial_props(experiment, run, block, trial):
 
         data_measures = data['measures']
         if data_measures:
-
+            add_measures_if_missing = ('ADD_MISSING_MEASURES' in app.config
+                                       and app.config['ADD_MISSING_MEASURES'])
             # register trial measures
             for measure_id, measure_value in _convert_measures(data_measures['trial']):
                 val = _get_measure_value(
                     measure_id, measure_value,
                     measure_level='trial',
-                    trial=trial
+                    trial=trial,
+                    add_measure_if_missing=add_measures_if_missing
                 )
                 trial.measure_values.append(val)
 
@@ -467,7 +468,8 @@ def trial_props(experiment, run, block, trial):
                         val = _get_measure_value(
                             measure_id, measure_value,
                             measure_level='event',
-                            trial=trial
+                            trial=trial,
+                            add_measure_if_missing=add_measures_if_missing
                         )
                         values.append(val)
 
@@ -485,7 +487,7 @@ def _get_measure_value(
     measure_value,
     measure_level,
     trial,
-    add_measure_if_missing=ADD_MISSING_MEASURES
+    add_measure_if_missing=False
 ):
     if measure_level not in ('event', 'trial'):
         raise ValueError("Unsupported measure level: " + measure_level)
@@ -534,7 +536,7 @@ def _get_measure_value(
             measure_id,
             measure_value
         )
-        warnings.warn(msg, WrongMeasureKey)
+        raise WrongMeasureKey(msg)
     else:
         try:
             return (

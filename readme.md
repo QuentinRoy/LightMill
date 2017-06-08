@@ -35,9 +35,15 @@ already in).
 
 To avoid concurrent update, client needs to acquire a lock to register
 trial results for a run.
+When a run is locked, it cannot be acquired again.
 
 You can manually unlock a run by going on the run page from the web
 interface and by clicking on the lock icon. This can be useful if a
 client crashed and a new lock need to be acquire to continue the
 experiment. However, doing so will most likely result in an error for an
 ongoing client.
+
+The lock protection can be lifted using the `--unprotected-runs` command line arguments which is
+useful during the development of experiment clients.
+However this option allows a client to "steal" the run of other clients and thus, it is unsafe when
+running the actual experiment and should never be used in production.

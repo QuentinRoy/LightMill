@@ -1,8 +1,7 @@
 # use glob syntax.
 syntax: glob
 
-expertiment.xml
-experiments.db
+*.db
 .idea
 *.pyc
 *.pyo
