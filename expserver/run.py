@@ -9,13 +9,12 @@ from queryyesno import query_yes_no
 import default_settings
 
 
-def start(database_uri,
-          sql_echo,
-          experiment_design,
-          debug, do_not_protect_runs,
-          add_missing_measures,
-          server_port,
-          volatile):
+def create_app(database_uri,
+               sql_echo=False,
+               debug=False,
+               do_not_protect_runs=False,
+               add_missing_measures=True,
+               volatile=False):
     # app creation
     app = Flask(__name__.split('.')[0])
     app.config['SQLALCHEMY_DATABASE_URI'] = ('sqlite://' if volatile
@@ -34,11 +33,7 @@ def start(database_uri,
 
     app.debug = debug
 
-    # experiment initialization
-    if experiment_design:
-        import_experiment(app, experiment_design)
-
-    app.run(host='0.0.0.0', port=server_port)
+    return app
 
 
 def import_experiment(app, touchstone_file):
@@ -112,11 +107,16 @@ if __name__ == '__main__':
                             default="no"):
             sys.exit(0)
 
-    start(database_uri=args.database,
-          sql_echo=args.verbose,
-          experiment_design=args.experiment_design,
-          debug=args.debug,
-          do_not_protect_runs=args.unprotected_runs,
-          add_missing_measures=not args.fixed_measures,
-          server_port=args.port,
-          volatile=args.volatile)
+    app = create_app(database_uri=args.database,
+                     sql_echo=args.verbose,
+                     debug=args.debug,
+                     do_not_protect_runs=args.unprotected_runs,
+                     add_missing_measures=not args.fixed_measures,
+                     volatile=args.volatile)
+
+    # Load experiment_design if provided.
+    experiment_design = args.experiment_design
+    if experiment_design:
+        import_experiment(app, experiment_design)
+
+    app.run(host='0.0.0.0', port=args.port)

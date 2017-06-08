@@ -1,6 +1,7 @@
 __author__ = 'Quentin Roy'
 
-# app must be imported (even if not use)
+from run import create_app
+from default_settings import DATABASE_URI
 from model import Experiment
 import os
 import time
@@ -8,6 +9,9 @@ from csv import DictWriter
 from collections import OrderedDict
 
 DELIMITER = ';'
+
+# app must be created (even if not use).
+create_app(DATABASE_URI)
 
 
 def convert_bool(val):
