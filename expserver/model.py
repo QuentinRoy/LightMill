@@ -1,7 +1,6 @@
-from sqlalchemy.orm.exc import NoResultFound
-
 __author__ = 'Quentin Roy'
 
+from sqlalchemy.orm.exc import NoResultFound
 from flask_sqlalchemy import SQLAlchemy, BaseQuery
 from datetime import datetime
 from sqlalchemy.ext.declarative.api import AbstractConcreteBase, declared_attr
