@@ -5,7 +5,6 @@ from flask import Flask
 from expapi import exp_api
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
-from queryyesno import query_yes_no
 import default_settings
 
 
@@ -49,6 +48,8 @@ def import_experiment(app, touchstone_file):
 if __name__ == '__main__':
     import argparse
     import sys
+    from gevent.wsgi import WSGIServer
+    from queryyesno import query_yes_no
 
     parser = argparse.ArgumentParser(description='Experiment server.')
 
@@ -119,4 +120,9 @@ if __name__ == '__main__':
     if experiment_design:
         import_experiment(app, experiment_design)
 
-    app.run(host='0.0.0.0', port=args.port)
+    print('* Running on http://0.0.0.0:{} (Press CTRL+C to quit)'.format(args.port))
+    try:
+        http_server = WSGIServer(('0.0.0.0', args.port), app)
+        http_server.serve_forever()
+    except KeyboardInterrupt:
+        sys.exit(0)
