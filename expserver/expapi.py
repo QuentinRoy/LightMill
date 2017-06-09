@@ -258,7 +258,7 @@ def expe_runs(experiment):
                                total_nb=len(run_statuses))
 
 
-@exp_api.route('/experiment/<experiment>/trials.csv')
+@exp_api.route('/experiment/<experiment>.csv')
 def generate_trial_csv(experiment):
     def generate():
         # Create a big request that selects factors and measures and if they have id

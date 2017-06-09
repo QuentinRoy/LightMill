@@ -46,4 +46,7 @@
             </tr>
         {% endfor %}
     </table>
+    <div id="downloads">
+      <a class="download-link download-results" href="{{url_for('exp_api.generate_trial_csv', experiment=experiment.id)}}" download>Download results</a>
+    </div>
 </body>
