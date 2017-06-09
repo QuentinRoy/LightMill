@@ -258,24 +258,36 @@ def expe_runs(experiment):
                                total_nb=len(run_statuses))
 
 
+def get_free_name(name, others, prefix):
+    if name in others:
+        name = prefix + name
+        prop = name
+        num = 0
+        while prop in others:
+            prop = name + '_' + str(num)
+            num += 1
+        return prop
+    return name
+
+
 @exp_api.route('/experiment/<experiment>.csv')
 def generate_trial_csv(experiment):
     def generate():
         # Create a big request that selects factors and measures and if they have id
         # conflicts. Returns the ids in alpha order, factors first.
-        factor_query = db.session.query(Factor.id.label('id'),
-                                        func.count(Measure.id)) \
-            .join(Experiment) \
-            .filter(Factor.experiment == experiment) \
-            .outerjoin(Measure, and_(Factor.id == Measure.id, Measure.experiment)) \
-            .group_by(Factor.id).all()
-        measure_query = db.session.query(Measure.id.label('id'),
-                                         func.count(Factor.id)) \
-            .filter_by(trial_level=True) \
-            .filter(Measure.experiment == experiment) \
-            .join(Experiment) \
-            .outerjoin(Factor, and_(Factor.id == Measure.id, Factor.experiment)) \
-            .group_by(Measure.id).all()
+        factor_ids = map(
+            lambda x: x[0],
+            db.session.query(Factor.id).join(Experiment)
+                                       .filter(Factor.experiment == experiment)
+                                       .order_by(Factor.id)
+        )
+        measure_ids = map(
+            lambda x: x[0],
+            db.session.query(Measure.id).filter_by(trial_level=True)
+                                        .filter(Measure.experiment == experiment)
+                                        .join(Experiment)
+                                        .order_by(Measure.id)
+        )
 
         # Create the orders.
         header_ids = ['experiment_id',
@@ -283,20 +295,17 @@ def generate_trial_csv(experiment):
                       'block_number',
                       'measured_block_number',
                       'trial_number',
-                      'practice']
-
-        factor_ids = list(v[0] for v in factor_query)
-        measure_ids = list(v[0] for v in measure_query)
+                      'practice',
+                      'server_completion_date']
 
         # Yield the header row.
         yield ', '.join(itertools.chain(
-                header_ids,
-                ((v[0] if not v[1] else 'factor_' + v[0]) for v in factor_query),
-                ((v[0] if not v[1] else 'measure_' + v[0]) for v in measure_query)
+            header_ids,
+            (get_free_name(f, itertools.chain(measure_ids, header_ids), '_factor_')
+             for f in factor_ids),
+            (get_free_name(m, itertools.chain(factor_ids, header_ids), '_measure_')
+             for m in measure_ids)
         )) + '\n'
-
-        del factor_query
-        del measure_query
 
         # From 3 records, yield each cell in the right order.
         def generate_cells(trial, factors, measures):
@@ -311,6 +320,7 @@ def generate_trial_csv(experiment):
         factor_values = db.session.query(Factor.id.label('id'),
                                          FactorValue.id.label('value'),
                                          Trial.number,
+                                         Trial.completion_date,
                                          Block.number,
                                          Block.practice,
                                          Run.id,
@@ -320,6 +330,7 @@ def generate_trial_csv(experiment):
         measure_values = db.session.query(Measure.id.label('id'),
                                           TrialMeasureValue.value.label('value'),
                                           Trial.number,
+                                          Trial.completion_date,
                                           Block.number,
                                           Block.practice,
                                           Run.id,
@@ -333,7 +344,16 @@ def generate_trial_csv(experiment):
         current_trial_number = None
         current_block_number = None
         current_run_id = None
-        for [value_id, value, trial_number, block_number, practice, run_id, value_group] in values:
+        for [
+            value_id,
+            value,
+            trial_number,
+            completion_date,
+            block_number,
+            practice,
+            run_id,
+            value_group
+        ] in values:
             # Case we changed trial
             if current_record is not None and not (trial_number == current_trial_number and
                                                    block_number == current_block_number and
@@ -351,8 +371,13 @@ def generate_trial_csv(experiment):
                 )
                 current_block_number = block_number
                 current_run_id = run_id
+                # print(type(completion_date))
                 current_record = {
                     'trial': {
+                        'server_completion_date': (
+                            str(_convert_date(completion_date)) if completion_date
+                            else ''
+                        ),
                         'experiment_id': experiment.id,
                         'run_id': run_id,
                         'block_number': str(block_number),
@@ -830,14 +855,11 @@ def _get_trial_info(trial):
         'practice': trial.block.practice,
         'completionDate': _convert_date(trial.completion_date)
     }
-    # if trial.completion_date:
-    #     answer['completion_date'] = int(time.mktime(
-    #         trial.completion_date.timetuple()))
     return answer
 
 
 def _convert_date(date):
-    return int(time.mktime(date.timetuple())) if date else None
+    return int(time.mktime(date.timetuple()) * 1000. + date.microsecond / 1000.) if date else None
 
 
 @exp_api.route('/run/<experiment>/<run>/trials')
