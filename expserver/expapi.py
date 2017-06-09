@@ -13,9 +13,10 @@ from flask import current_app as app
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import func
+from sqlalchemy import func, and_
+from sqlalchemy.sql.expression import literal_column
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
-from model import Event, TrialMeasureValue, EventMeasureValue
+from model import Event, TrialMeasureValue, EventMeasureValue, trial_factor_values
 from model import Measure, MeasureLevelError, FactorValue, Factor
 from touchstone import create_experiment, parse_experiment_id
 
@@ -255,6 +256,118 @@ def expe_runs(experiment):
                                experiment=experiment,
                                completed_nb=len(filter(lambda e: e[1] == e[2], run_statuses)),
                                total_nb=len(run_statuses))
+
+
+@exp_api.route('/experiment/<experiment>/trials.csv')
+def generate_trial_csv(experiment):
+    def generate():
+        # Create a big request that selects factors and measures and if they have id
+        # conflicts. Returns the ids in alpha order, factors first.
+        factor_query = db.session.query(Factor.id.label('id'),
+                                        func.count(Measure.id)) \
+            .join(Experiment) \
+            .filter(Factor.experiment == experiment) \
+            .outerjoin(Measure, and_(Factor.id == Measure.id, Measure.experiment)) \
+            .group_by(Factor.id).all()
+        measure_query = db.session.query(Measure.id.label('id'),
+                                         func.count(Factor.id)) \
+            .filter_by(trial_level=True) \
+            .filter(Measure.experiment == experiment) \
+            .join(Experiment) \
+            .outerjoin(Factor, and_(Factor.id == Measure.id, Factor.experiment)) \
+            .group_by(Measure.id).all()
+
+        # Create the orders.
+        header_ids = ['experiment_id',
+                      'run_id',
+                      'block_number',
+                      'measured_block_number',
+                      'trial_number',
+                      'practice']
+
+        factor_ids = list(v[0] for v in factor_query)
+        measure_ids = list(v[0] for v in measure_query)
+
+        # Yield the header row.
+        yield ', '.join(itertools.chain(
+                header_ids,
+                ((v[0] if not v[1] else 'factor_' + v[0]) for v in factor_query),
+                ((v[0] if not v[1] else 'measure_' + v[0]) for v in measure_query)
+        )) + '\n'
+
+        del factor_query
+        del measure_query
+
+        # From 3 records, yield each cell in the right order.
+        def generate_cells(trial, factors, measures):
+            for h in header_ids:
+                yield trial.get(h, '')
+            for f in factor_ids:
+                yield factors.get(f, '')
+            for m in measure_ids:
+                yield measures.get(m, '')
+
+        # Request factor values and measure values.
+        factor_values = db.session.query(Factor.id.label('id'),
+                                         FactorValue.id.label('value'),
+                                         Trial.number,
+                                         Block.number,
+                                         Block.practice,
+                                         Run.id,
+                                         literal_column('"factors"')) \
+            .join(Factor, FactorValue.factor) \
+            .join(trial_factor_values, Trial, Block, Run)
+        measure_values = db.session.query(Measure.id.label('id'),
+                                          TrialMeasureValue.value.label('value'),
+                                          Trial.number,
+                                          Block.number,
+                                          Block.practice,
+                                          Run.id,
+                                          literal_column('"measures"')) \
+            .join(TrialMeasureValue, Trial, Block, Run)
+        values = measure_values.union_all(factor_values) \
+            .order_by(Run.id, Block.number, Trial.number)
+
+        current_record = None
+        current_measured_block_num = None
+        current_trial_number = None
+        current_block_number = None
+        current_run_id = None
+        for [value_id, value, trial_number, block_number, practice, run_id, value_group] in values:
+            # Case we changed trial
+            if current_record is not None and not (trial_number == current_trial_number and
+                                                   block_number == current_block_number and
+                                                   current_run_id == run_id):
+                # Yield the current record.
+                yield ','.join(generate_cells(**current_record)) + '\n'
+                # Reset the values.
+                current_record = None
+            if not current_record:
+                current_trial_number = trial_number
+                current_measured_block_num = (
+                    0 if not current_measured_block_num and not practice
+                    else current_measured_block_num if practice
+                    else current_measured_block_num + 1
+                )
+                current_block_number = block_number
+                current_run_id = run_id
+                current_record = {
+                    'trial': {
+                        'experiment_id': experiment.id,
+                        'run_id': run_id,
+                        'block_number': str(block_number),
+                        'measured_block_number': (
+                            '' if practice else str(current_measured_block_num)
+                        ),
+                        'trial_number': str(trial_number),
+                        'practice': str(practice)
+                    }, 'factors': {}, 'measures': {}
+                }
+            current_record[value_group][value_id] = value
+        # Yield the last record
+        yield ','.join(generate_cells(**current_record)) + '\n'
+
+    return Response(generate(), mimetype='text/csv')
 
 
 @exp_api.route('/import', methods=['POST'])
