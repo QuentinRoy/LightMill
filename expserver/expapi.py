@@ -162,7 +162,6 @@ def options():
 
 @exp_api.route('/experiments')
 def experiments_list():
-    print('>>> experiments')
     json_requested = (
         'json' in request.args and request.args['json'].lower() == 'true'
     ) or request.is_xhr
