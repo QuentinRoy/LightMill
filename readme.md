@@ -10,7 +10,7 @@ can be downloaded from [here](https://github.com/jdfekete/touchstone-platforms/t
 
 ```shell
 ./configure.sh
-./run-server.sh
+./start.sh
 ```
 
 You need a python 2.7 interpreter and `virtualenv` installed. If
@@ -55,5 +55,5 @@ running the actual experiment and should never be used in production.
 ## Other options?
 
 ```shell
-./run.sh --help
+./start.sh --help
 ```

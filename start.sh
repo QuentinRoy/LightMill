@@ -27,4 +27,4 @@ do
     shift
 done
 
-source $DIR/venv/bin/activate;python $pyArgList $DIR/expserver/run.py $serverArgList;
+source $DIR/venv/bin/activate;python $pyArgList $DIR/expserver/start.py $serverArgList;
