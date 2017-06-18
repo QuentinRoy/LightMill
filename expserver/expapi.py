@@ -13,7 +13,7 @@ from flask import current_app as app
 from flask.blueprints import Blueprint
 from flask.helpers import url_for, make_response
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from sqlalchemy.sql.expression import literal_column
 from model import Experiment, Run, Trial, Block, db, ExperimentProgressError
 from model import Event, TrialMeasureValue, EventMeasureValue, trial_factor_values
