@@ -13,12 +13,16 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 serverArgList=' '
 # Argument list for python.
 pyArgList=''
+# Check if debug mode, else activate python optimization.
+debug=false
+
+
 
 # Idiomatic parameter and option handling in sh.
 while test $# -gt 0
 do
     case "$1" in
-        --debug) pyArgList+=" -O"
+        --debug) debug=true
                  serverArgList+=" $1"
             ;;
         *) serverArgList+=" $1"
@@ -27,4 +31,8 @@ do
     shift
 done
 
-source $DIR/venv/bin/activate;python $pyArgList $DIR/expserver/start.py $serverArgList;
+if [ "$debug" = false ] ; then
+    pyArgList+=" -O"
+fi
+
+source $DIR/venv/bin/activate && python $pyArgList $DIR/start.py $serverArgList

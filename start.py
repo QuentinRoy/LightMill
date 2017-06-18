@@ -1,55 +1,10 @@
-__author__ = 'Quentin Roy'
-
-import os
-from flask import Flask
-from expapi import exp_api
-from model import db, Experiment
-from touchstone import create_experiment, parse_experiment_id
-import default_settings
-
-
-def create_app(database_uri,
-               sql_echo=False,
-               debug=False,
-               do_not_protect_runs=False,
-               add_missing_measures=True,
-               volatile=False):
-    # app creation
-    app = Flask(__name__.split('.')[0])
-    app.config['SQLALCHEMY_DATABASE_URI'] = ('sqlite://' if volatile
-                                             else 'sqlite:///' + os.path.abspath(database_uri))
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_ECHO'] = sql_echo
-    app.config['UNPROTECTED_RUNS'] = do_not_protect_runs
-    app.config['ADD_MISSING_MEASURES'] = add_missing_measures
-    app.register_blueprint(exp_api)
-    app.jinja_env.add_extension("jinja2htmlcompress.SelectiveHTMLCompress")
-
-    # database initialization
-    db.init_app(app)
-    db.app = app
-    db.create_all()
-
-    app.debug = debug
-
-    return app
-
-
-def import_experiment(app, touchstone_file):
-    expe_id = parse_experiment_id(touchstone_file)
-    with app.test_request_context():
-        if not db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
-            print("Importing experiment {} from {}..".format(expe_id, touchstone_file))
-            experiment = create_experiment(touchstone_file)
-            db.session.add(experiment)
-            db.session.commit()
-
-
 if __name__ == '__main__':
     import argparse
     import sys
     from gevent.wsgi import WSGIServer
-    from queryyesno import query_yes_no
+    from xpserver.queryyesno import query_yes_no
+    from xpserver.app import create_app, import_experiment
+    import xpserver.default_settings as default_settings
 
     parser = argparse.ArgumentParser(description='Experiment server.')
 
@@ -74,9 +29,8 @@ if __name__ == '__main__':
     parser.add_argument('--debug',
                         default=False,
                         action='store_true',
-                        help='Server debug mode. Automatically reloads the server when its code'
-                             ' changes, also provides error trace from the browser on failed'
-                             ' requests.')
+                        help='Server debug mode. Provides error trace from the browser on server'
+                             ' errors.')
     parser.add_argument('--fixed-measures',
                         default=False,
                         action='store_true',

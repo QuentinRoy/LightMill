@@ -36,7 +36,7 @@
                 <td class="run-lock">
                   {% if run.locked %}
                     <span class="cell-content"><a
-                      href="/run/{{experiment.id}}/{{ run.id }}/force_unlock"
+                      href="{{url_for('web.unlock_run', experiment=experiment.id, run=run.id)}}"
                       title="Unlock run {{ run.id }}"
                       onclick="return confirm('Unlock run {{ run.id }}?\nThis might interrupt a participant.')"
                       class="run-lock-link"
@@ -47,6 +47,6 @@
         {% endfor %}
     </table>
     <div id="downloads">
-      <a class="download-link download-results" href="{{url_for('exp_api.generate_trial_csv', experiment=experiment.id)}}" download>Download results</a>
+      <a class="download-link download-results" href="{{url_for('web.generate_trial_csv', experiment=experiment.id)}}" download>Download results</a>
     </div>
 </body>
