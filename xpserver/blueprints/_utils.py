@@ -6,24 +6,30 @@ from sqlalchemy.orm.exc import NoResultFound
 from ..model import Trial, Block, Run, Experiment
 
 
-def create_invalid_usage_response(error):
-    error_dict = error.to_dict()
-    error_dict['type'] = error.__class__.__name__
-    response = jsonify(error_dict)
-    response.status_code = error.status_code
-    return response
+def register_invalid_error(blueprint, errorType):
+    @blueprint.errorhandler(errorType)
+    def create_invalid_usage_response(error):
+        error_dict = error.to_dict()
+        error_dict['type'] = error.__class__.__name__
+        response = jsonify(error_dict)
+        response.status_code = error.status_code
+        return response
 
 
-def allow_origin(response):
-    """Makes all the api accessible from any origin"""
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
-    return response
+def allow_origin(blueprint):
+    @blueprint.after_request
+    def create_response(response):
+        """Makes all the api accessible from any origin"""
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
+        return response
 
 
-def answer_options():
-    resp = make_response()
-    return resp
+def answer_options(blueprint):
+    @blueprint.route('/*', methods=['OPTIONS'])
+    def options():
+        resp = make_response()
+        return resp
 
 
 def _inject_trial(values):

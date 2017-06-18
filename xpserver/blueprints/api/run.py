@@ -6,15 +6,15 @@ from flask.blueprints import Blueprint
 from trial import trial_info
 from block import generate_block_trials_info
 from ...model import db
-from .._utils import allow_origin, inject_model, answer_options, create_invalid_usage_response
+from .._utils import allow_origin, inject_model, answer_options, register_invalid_error
 from ..errors import UnknownElement
 
 
 blueprint = Blueprint('run', os.path.splitext(__name__)[0])
-blueprint.errorhandler(UnknownElement)(create_invalid_usage_response)
 blueprint.url_value_preprocessor(inject_model)
-blueprint.after_request(allow_origin)
-blueprint.route('/*', methods=['OPTIONS'])(answer_options)
+register_invalid_error(blueprint, UnknownElement)
+allow_origin(blueprint)
+answer_options(blueprint)
 
 
 @blueprint.route('/<experiment>/<run>')

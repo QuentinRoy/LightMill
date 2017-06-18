@@ -4,7 +4,7 @@ import warnings
 from flask import jsonify, request, current_app as app
 from flask.blueprints import Blueprint
 from ..errors import UnknownElement
-from .._utils import create_invalid_usage_response, inject_model, allow_origin, answer_options
+from .._utils import register_invalid_error, inject_model, allow_origin, answer_options
 from .._utils import convert_date
 from ...model import db, ExperimentProgressError, Measure, TrialMeasureValue, Event
 from ...model import MeasureLevelError, EventMeasureValue
@@ -26,11 +26,11 @@ class WrongMeasureKey(Warning):
 
 
 blueprint = Blueprint('trial', os.path.splitext(__name__)[0])
-blueprint.errorhandler(WrongMeasureKey)(create_invalid_usage_response)
-blueprint.errorhandler(UnknownElement)(create_invalid_usage_response)
 blueprint.url_value_preprocessor(inject_model)
-blueprint.after_request(allow_origin)
-blueprint.route('/*', methods=['OPTIONS'])(answer_options)
+register_invalid_error(blueprint, UnknownElement)
+register_invalid_error(blueprint, WrongMeasureKey)
+allow_origin(blueprint)
+answer_options(blueprint)
 
 
 @blueprint.errorhandler(ExperimentProgressError)

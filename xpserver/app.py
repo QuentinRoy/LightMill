@@ -4,6 +4,7 @@ import os
 from flask import Flask
 from blueprints.web import web_blueprint
 from blueprints.api import experiment_blueprint, run_blueprint, block_blueprint, trial_blueprint
+from blueprints.api import root_blueprint as api_root_blueprint
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
 import default_settings
@@ -27,6 +28,7 @@ def create_app(database_uri,
     app.jinja_env.add_extension("xpserver.jinja2htmlcompress.SelectiveHTMLCompress")
 
     app.register_blueprint(web_blueprint)
+    app.register_blueprint(api_root_blueprint, url_prefix='/api')
     app.register_blueprint(experiment_blueprint, url_prefix='/api/experiment')
     app.register_blueprint(run_blueprint, url_prefix='/api/run')
     app.register_blueprint(block_blueprint, url_prefix='/api/block')

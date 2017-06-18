@@ -4,15 +4,15 @@ from flask import jsonify
 from flask.blueprints import Blueprint
 from ...model import Trial
 from .._utils import convert_date, allow_origin, inject_model, answer_options
-from .._utils import create_invalid_usage_response
+from .._utils import register_invalid_error
 from ..errors import UnknownElement
 
-
 blueprint = Blueprint('block', os.path.splitext(__name__)[0])
+
 blueprint.url_value_preprocessor(inject_model)
-blueprint.errorhandler(UnknownElement)(create_invalid_usage_response)
-blueprint.after_request(allow_origin)
-blueprint.route('/*', methods=['OPTIONS'])(answer_options)
+register_invalid_error(blueprint, UnknownElement)
+allow_origin(blueprint)
+answer_options(blueprint)
 
 
 @blueprint.route('/<experiment>/<run>/<int:block>')
