@@ -60,7 +60,7 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--experiment-design',
                         type=open,
                         help='Experiment design file to import on startup'
-                             ' (if the experiment is not already imported)'
+                             ' (if the experiment is not already imported).'
                              ' Supports touchsTone\'s XML export format.')
     parser.add_argument('-d', '--database',
                         default=default_settings.DATABASE_URI,

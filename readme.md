@@ -2,7 +2,8 @@
 
 *XPServer* is a user experiment server used to manage and log experiment runs.
 It uses [TouchStone](https://www.lri.fr/~appert/website/touchstone/touchstone.html)'s design files
-and provides a web interface to monitor an ongoing experiment.
+and provides a web interface to monitor an ongoing experiment. The touchstone design platform
+can be downloaded from [here](https://github.com/jdfekete/touchstone-platforms/tree/master/design-platform).
 
 ## Make it run!
 
@@ -14,22 +15,25 @@ and provides a web interface to monitor an ongoing experiment.
 
 You need a python 2.7 interpreter and `virtualenv` installed. If
 `virtualenv` is unfound, you can install it with
-`easy_install virtualenv`.
+`easy_install virtualenv`. Using `virtualenv` makes sure
+all of the project's dependencies are installed locally and
+we do not pollute your python global libraries.
 
 You can then access the web interface from `localhost` on the
 corresponding port.
 
+The experiment described in `experiment.xml` at the root folder will be
+automatically imported into the database at server startup (if not
+already in). You can also specify another experiment design path with
+the `--experiment-design` command line option.
+
 ## Grab the results!
 
-```shell
-./export.sh
-```
+The trial results can be downloaded from the bottom of the experiment page from web API.
 
-The results will be exported in the export folder.
+Currently, the only way to export the event logs is by using the
+`./export.sh` script (slow and hopefully deprecated soon).
 
-The experiment described in experiment.xml at the root folder will be
-automatically imported into the database at server startup (if not
-already in).
 
 ## Locked run
 
@@ -39,11 +43,17 @@ When a run is locked, it cannot be acquired again.
 
 You can manually unlock a run by going on the run page from the web
 interface and by clicking on the lock icon. This can be useful if a
-client crashed and a new lock need to be acquire to continue the
+client crashed and a new lock needs to be acquire to continue the
 experiment. However, doing so will most likely result in an error for an
 ongoing client.
 
-The lock protection can be lifted using the `--unprotected-runs` command line arguments which is
-useful during the development of experiment clients.
-However this option allows a client to "steal" the run of other clients and thus, it is unsafe when
+The lock protection can be lifted using the `--unprotected-runs` command line argument.
+This is useful during the development of experiment clients.
+However this option allows a client to "steal" the run of another and thus, it is unsafe when
 running the actual experiment and should never be used in production.
+
+## Other options?
+
+```shell
+./run.sh --help
+```
