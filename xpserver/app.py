@@ -7,7 +7,6 @@ from blueprints.api import experiment_blueprint, run_blueprint, block_blueprint,
 from blueprints.api import root_blueprint as api_root_blueprint
 from model import db, Experiment
 from touchstone import create_experiment, parse_experiment_id
-import default_settings
 
 
 def create_app(database_uri,
