@@ -1,4 +1,4 @@
-# Experiment Server
+# LightMill
 
 *LightMill* is a user experiment server used to manage and log experiment runs.
 It uses [TouchStone](https://www.lri.fr/~appert/website/touchstone/touchstone.html)'s design files
@@ -43,7 +43,7 @@ When a run is locked, it cannot be acquired again.
 
 You can manually unlock a run by going on the run page from the web
 interface and by clicking on the lock icon. This can be useful if a
-client crashed and a new lock needs to be acquire to continue the
+client crashed and a new lock needs to be acquired to continue the
 experiment. However, doing so will most likely result in an error for an
 ongoing client.
 
