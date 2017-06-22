@@ -2,9 +2,9 @@ if __name__ == '__main__':
     import argparse
     import sys
     from gevent.wsgi import WSGIServer
-    from xpserver.queryyesno import query_yes_no
-    from xpserver.app import create_app, import_experiment
-    import xpserver.default_settings as default_settings
+    from lightmill.queryyesno import query_yes_no
+    from lightmill.app import create_app, import_experiment
+    import lightmill.default_settings as default_settings
 
     parser = argparse.ArgumentParser(description='Experiment server.')
 

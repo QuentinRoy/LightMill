@@ -1,3 +1,7 @@
+"""
+Module from http://code.activestate.com/recipes/577058/
+"""
+
 import sys
 
 

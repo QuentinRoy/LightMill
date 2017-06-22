@@ -24,7 +24,7 @@ def create_app(database_uri,
     app.config['UNPROTECTED_RUNS'] = do_not_protect_runs
     app.config['ADD_MISSING_MEASURES'] = add_missing_measures
     # FIXME: This depends on the current package and how it is run. Breaks easily.
-    app.jinja_env.add_extension("xpserver.jinja2htmlcompress.SelectiveHTMLCompress")
+    app.jinja_env.add_extension("lightmill.jinja2htmlcompress.SelectiveHTMLCompress")
 
     app.register_blueprint(web_blueprint)
     app.register_blueprint(api_root_blueprint, url_prefix='/api')

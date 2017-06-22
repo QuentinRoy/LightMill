@@ -1,6 +1,6 @@
 # Experiment Server
 
-*XPServer* is a user experiment server used to manage and log experiment runs.
+*LightMill* is a user experiment server used to manage and log experiment runs.
 It uses [TouchStone](https://www.lri.fr/~appert/website/touchstone/touchstone.html)'s design files
 and provides a web interface to monitor an ongoing experiment. The touchstone design platform
 can be downloaded from [here](https://github.com/jdfekete/touchstone-platforms/tree/master/design-platform).
@@ -57,3 +57,6 @@ running the actual experiment and should never be used in production.
 ```shell
 ./start.sh --help
 ```
+## API
+
+TODO

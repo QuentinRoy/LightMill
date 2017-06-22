@@ -1,4 +1,0 @@
-flask>=0.10
-flask-sqlalchemy>=1
-gevent
-gevent-websocket
