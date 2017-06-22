@@ -28,7 +28,7 @@ def _get_free_name(name, others, prefix):
 
 @web_blueprint.route('/')
 def index():
-    return render_template('experiments_list.html',
+    return render_template('experiments_list.jinja',
                            experiments=Experiment.query.all())
 
 
@@ -39,7 +39,7 @@ def experiment(experiment):
                                      func.count(Trial.number))
                     .outerjoin(Block, Trial)
                     .group_by(Run.id)).all()
-    return render_template('experiment.html',
+    return render_template('experiment.jinja',
                            run_statuses=run_statuses,
                            experiment=experiment,
                            completed_nb=len(filter(lambda e: e[1] == e[2], run_statuses)),
@@ -189,7 +189,7 @@ def run_results(experiment, run):
                                .join(FactorValue.factor)
                                .filter(Factor.experiment == experiment)
                                .filter(FactorValue.name.isnot(None)))
-    return render_template('results_static.html',
+    return render_template('results_static.jinja',
                            trials=list(generate_run_trials_info(run, completed_only=True)),
                            trial_measures=trial_measures,
                            factor_values_names=factor_values_names,
@@ -204,7 +204,7 @@ def events(experiment, run, block, trial):
                             in experiment.measures.itervalues()
                             if measure.event_level),
                             key=lambda x: x.id)
-    return render_template('events.html',
+    return render_template('events.jinja',
                            trial=trial,
                            block=block,
                            event_measures=event_measures,
