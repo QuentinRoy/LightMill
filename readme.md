@@ -1,6 +1,6 @@
 # LightMill
 
-*LightMill* is a user experiment server used to manage and log experiment runs.
+*LightMill* is a user experiment web server used to manage and log experiments running in browsers.
 It uses [TouchStone](https://www.lri.fr/~appert/website/touchstone/touchstone.html)'s design files
 and provides a web interface to monitor an ongoing experiment. The touchstone design platform
 can be downloaded from [here](https://github.com/jdfekete/touchstone-platforms/tree/master/design-platform).
@@ -26,6 +26,12 @@ The experiment described in `experiment.xml` at the root folder will be
 automatically imported into the database at server startup (if not
 already in). You can also specify another experiment design path with
 the `--experiment-design` command line option.
+
+## Build Your experiment
+
+[`lightmill-runner`](https://github.com/QuentinRoy/lightmill-js/tree/master/packages/lightmill-runner) is a JavasCript library that is used to interface your experiment application with `LightMill`.
+
+Additionally [`lightmill-app`](https://github.com/QuentinRoy/lightmill-js/tree/master/packages/lightmill-app) provides a set of standard views such as `blockInit` or `end` for you to use in your application. 
 
 ## Grab the results!
 
