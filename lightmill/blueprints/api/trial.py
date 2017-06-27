@@ -1,6 +1,7 @@
 import os
 import itertools
 import warnings
+import json
 from flask import jsonify, request, current_app as app
 from flask.blueprints import Blueprint
 from ..errors import UnknownElement
@@ -45,8 +46,10 @@ def handle_experiment_error(error):
 
 @blueprint.route('/<experiment>/<run>/<int:block>/<int:trial>', methods=['POST'])
 def post_result(experiment, run, block, trial):
-    data = request.get_json()
-
+    # Do not use request.get_json() to support unset content type and allow POST requests
+    # without preflight.
+    data = json.loads(request.data)
+    
     # check the token
     token = data['token']
     if run.token is None:
