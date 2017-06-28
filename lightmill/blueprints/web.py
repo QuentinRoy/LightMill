@@ -14,6 +14,11 @@ web_blueprint = Blueprint('web', os.path.splitext(__name__)[0])
 web_blueprint.url_value_preprocessor(inject_model)
 
 
+def _toCamelCase(st):
+    output = ''.join(x for x in st.title() if x.isalpha())
+    return output[0].lower() + output[1:]
+
+
 def _get_free_name(name, others, prefix):
     if name in others:
         name = prefix + name
@@ -66,17 +71,17 @@ def generate_trial_csv(experiment):
         )
 
         # Create the orders.
-        header_ids = ['experimentId',
-                      'runId',
-                      'blockNumber',
-                      'measuredBlockNumber',
-                      'trialNumber',
+        header_ids = ['experiment_id',
+                      'run_id',
+                      'block_number',
+                      'measured_block_number',
+                      'trial_number',
                       'practice',
-                      'serverCompletionDate']
+                      'server_completion_date']
 
         # Yield the header row.
         yield ','.join(itertools.chain(
-            header_ids,
+            (_toCamelCase(x) for x in header_ids),
             (_get_free_name(f, itertools.chain(measure_ids, header_ids), '_factor_')
              for f in factor_ids),
             (_get_free_name(m, itertools.chain(factor_ids, header_ids), '_measure_')
