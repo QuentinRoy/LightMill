@@ -79,12 +79,14 @@ def generate_trial_csv(experiment):
                       'practice',
                       'server_completion_date']
 
+        headers = map(_toCamelCase, header_ids)
+
         # Yield the header row.
         yield ','.join(itertools.chain(
-            (_toCamelCase(x) for x in header_ids),
-            (_get_free_name(f, itertools.chain(measure_ids, header_ids), '_factor_')
+            headers,
+            (_get_free_name(f, itertools.chain(measure_ids, headers), '_factor_')
              for f in factor_ids),
-            (_get_free_name(m, itertools.chain(factor_ids, header_ids), '_measure_')
+            (_get_free_name(m, itertools.chain(factor_ids, headers), '_measure_')
              for m in measure_ids)
         )) + '\n'
 
