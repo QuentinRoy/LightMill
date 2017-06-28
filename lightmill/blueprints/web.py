@@ -75,7 +75,7 @@ def generate_trial_csv(experiment):
                       'server_completion_date']
 
         # Yield the header row.
-        yield ', '.join(itertools.chain(
+        yield ','.join(itertools.chain(
             header_ids,
             (_get_free_name(f, itertools.chain(measure_ids, header_ids), '_factor_')
              for f in factor_ids),
