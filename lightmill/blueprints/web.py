@@ -168,7 +168,11 @@ def generate_trial_csv(experiment):
         # Yield the last record
         yield ','.join(generate_cells(**current_record)) + '\n'
 
-    return Response(generate(), mimetype='text/csv')
+    # Create and return the response, allowing cross-origin requests.
+    return Response(generate(), mimetype='text/csv', headers={
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'X-Requested-With, Content-Type'
+    })
 
 
 @web_blueprint.route('/run/<experiment>/<run>/unlock')
