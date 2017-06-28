@@ -66,13 +66,13 @@ def generate_trial_csv(experiment):
         )
 
         # Create the orders.
-        header_ids = ['experiment_id',
-                      'run_id',
-                      'block_number',
-                      'measured_block_number',
-                      'trial_number',
+        header_ids = ['experimentId',
+                      'runId',
+                      'blockNumber',
+                      'measuredBlockNumber',
+                      'trialNumber',
                       'practice',
-                      'server_completion_date']
+                      'serverCompletionDate']
 
         # Yield the header row.
         yield ','.join(itertools.chain(
