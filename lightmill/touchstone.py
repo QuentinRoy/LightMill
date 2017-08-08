@@ -5,6 +5,10 @@ from xml.dom import pulldom
 from model import Experiment, Run, Trial, Factor, FactorValue, Block, db, Measure
 
 
+class TouchStoneParsingException(Exception):
+    pass
+
+
 def update_experiment(touchstone_file):
     exp_dom = ElementTree.parse(touchstone_file).getroot()
     xp_id = parse_experiment_id(touchstone_file)
@@ -13,7 +17,7 @@ def update_experiment(touchstone_file):
         print("Update experiment {}.".format(xp_id))
         return _parse_experiment(exp_dom, experiments[0], True)
     else:
-        raise "The experiment {} does not exist".format(xp_id)
+        raise TouchStoneParsingException("The experiment {} does not exist".format(xp_id))
 
 
 def create_experiment(touchstone_file):
@@ -36,7 +40,7 @@ def _parse_experiment(dom, exp=None, verbose=False):
     measures = (_parse_measure(measure_dom) for measure_dom in dom.findall('measure'))
     id = dom.get('id')
     if not id:
-        raise "No experiment id."
+        raise TouchStoneParsingException("No experiment id.")
     exp = exp or Experiment(id=dom.get('id'),
                             name=_nonize_string(dom.get('name')),
                             factors=[
@@ -121,7 +125,7 @@ def _parse_factor_values_string(values_string, experiment):
             value = next(value for value in factor.values if value.id == value_id)
             values.append(value)
         except StopIteration:
-            raise Exception(
+            raise TouchStoneParsingException(
                 'Factor or factor value not registered: {}={}'.format(factor_id, value_id)
             )
     return values

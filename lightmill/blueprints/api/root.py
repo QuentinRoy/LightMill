@@ -5,7 +5,7 @@ from flask import jsonify, request
 from experiment import props as experiment_props
 from ..errors import UnknownElement
 from .._utils import allow_origin, answer_options, inject_model, register_invalid_error
-from ...touchstone import create_experiment, parse_experiment_id
+from ...touchstone import create_experiment, parse_experiment_id, TouchStoneParsingException
 from ...model import Experiment, db
 
 blueprint = Blueprint('root', os.path.splitext(__name__)[0])
@@ -41,7 +41,7 @@ def experiments_list():
 
 @blueprint.route('/import', methods=['POST'])
 def import_experiment():
-    if request.method == 'POST':
+    try:
         # retrieve the id of the experiment
         expe_id = parse_experiment_id(StringIO(request.data))
         print('Importing experiment {}...'.format(expe_id))
@@ -54,3 +54,6 @@ def import_experiment():
         db.session.commit()
         print('Experiment imported.')
         return experiment_props(experiment)
+    except TouchStoneParsingException as e:
+        print('Experiment not imported: {}'.format(e.message))
+        raise CannotImportExperiment(e.message or 'Cannot parse experiment')
