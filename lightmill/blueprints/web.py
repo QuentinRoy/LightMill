@@ -5,7 +5,7 @@ from flask.blueprints import Blueprint
 from flask.helpers import url_for
 from sqlalchemy import func
 from sqlalchemy.sql.expression import literal_column
-from ..model import Experiment, Run, Trial, Block, db, TrialMeasureValue, trial_factor_values
+from ..model import Experiment, Run, Trial, Block, db, TrialMeasureValue, trial_factor_values, block_values
 from ..model import Measure, FactorValue, Factor
 from _utils import inject_model, convert_date
 from api.run import generate_run_trials_info
@@ -119,13 +119,27 @@ def generate_trial_csv(experiment):
                                           Run.id,
                                           literal_column('"measures"')) \
             .join(TrialMeasureValue, Trial, Block, Run)
-        values = measure_values.union_all(factor_values) \
+        block_factor_values = db.session.query(Factor.id.label('id'),
+                                               FactorValue.id.label('value'),
+                                               literal_column('-1'),
+                                               literal_column('null'),
+                                               Block.number,
+                                               Block.practice,
+                                               Run.id,
+                                               literal_column('"factors"')) \
+            .join(Factor, FactorValue.factor) \
+            .join(block_values, Block, Run)
+    
+        values = measure_values.union_all(factor_values, block_factor_values) \
             .order_by(Run.id, Block.number, Trial.number)
+
+        # values = factor_values
 
         current_record = None
         current_measured_block_num = None
         current_trial_number = None
         current_block_number = None
+        current_block_factors = {}
         current_run_id = None
         for [
             value_id,
@@ -137,14 +151,25 @@ def generate_trial_csv(experiment):
             run_id,
             value_group
         ] in values:
+            # import pdb; pdb.set_trace()
+            # Case we changed block
+            if current_record is not None and not(block_number == current_block_number and
+                                                  current_run_id == run_id):
+                current_block_factors = {}
             # Case we changed trial
             if current_record is not None and not (trial_number == current_trial_number and
                                                    block_number == current_block_number and
                                                    current_run_id == run_id):
-                # Yield the current record.
-                yield ','.join(generate_cells(**current_record)) + '\n'
+                
+                if current_trial_number < 0:
+                    # Case, the previous records were about block_initialization.
+                    current_block_factors = current_record['factors']
+                else:
+                    # Yield the current record.
+                    yield ','.join(generate_cells(**current_record)) + '\n'
                 # Reset the values.
                 current_record = None
+            
             if not current_record:
                 current_trial_number = trial_number
                 current_measured_block_num = (
@@ -169,7 +194,9 @@ def generate_trial_csv(experiment):
                         ),
                         'trial_number': str(trial_number),
                         'practice': str(practice)
-                    }, 'factors': {}, 'measures': {}
+                    },
+                    'factors': current_block_factors.copy(),
+                    'measures': {}
                 }
             current_record[value_group][value_id] = value
         # Yield the last record
