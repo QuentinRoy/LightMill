@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 
 # Argument list for the experiment server.
