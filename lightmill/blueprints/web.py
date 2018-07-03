@@ -31,6 +31,20 @@ def _get_free_name(name, others, prefix):
     return name
 
 
+def _format_csv_cell(cell_content):
+    "Escaping CSV cells accordingly to RFC4180 (https://tools.ietf.org/html/rfc4180)"
+    enclose = False
+    if '"' in cell_content:
+        enclose = True
+        cell_content = cell_content.replace('"', '""')
+    if '\n' in cell_content or ',' in cell_content:
+        enclose = True
+    if enclose:
+        return '"' + cell_content + '"'
+    else:
+        return cell_content
+
+
 @web_blueprint.route('/')
 def index():
     return render_template('experiments_list.jinja',
@@ -84,20 +98,22 @@ def generate_trial_csv(experiment):
         # Yield the header row.
         yield ','.join(itertools.chain(
             headers,
-            (_get_free_name(f, itertools.chain(measure_ids, headers), '_factor_')
-             for f in factor_ids),
-            (_get_free_name(m, itertools.chain(factor_ids, headers), '_measure_')
-             for m in measure_ids)
+            (_format_csv_cell(
+                _get_free_name(f, itertools.chain(measure_ids, headers), '_factor_')
+            ) for f in factor_ids),
+            (_format_csv_cell(
+                _get_free_name(m, itertools.chain(factor_ids, headers), '_measure_')
+            ) for m in measure_ids)
         )) + '\n'
 
         # From 3 records, yield each cell in the right order.
         def generate_cells(trial, factors, measures):
             for h in header_ids:
-                yield trial.get(h, '')
+                yield _format_csv_cell(trial.get(h, ''))
             for f in factor_ids:
-                yield factors.get(f, '')
+                yield _format_csv_cell(factors.get(f, ''))
             for m in measure_ids:
-                yield measures.get(m, '')
+                yield _format_csv_cell(measures.get(m, ''))
 
         # Request factor values and measure values.
         factor_values = db.session.query(Factor.id.label('id'),
