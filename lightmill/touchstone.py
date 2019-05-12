@@ -2,7 +2,7 @@ __author__ = 'Quentin Roy'
 
 from xml.etree import ElementTree
 from xml.dom import pulldom
-from model import Experiment, Run, Trial, Factor, FactorValue, Block, db, Measure
+from .model import Experiment, Run, Trial, Factor, FactorValue, Block, db, Measure
 
 
 class TouchStoneParsingException(Exception):
@@ -17,7 +17,8 @@ def update_experiment(touchstone_file):
         print("Update experiment {}.".format(xp_id))
         return _parse_experiment(exp_dom, experiments[0], True)
     else:
-        raise TouchStoneParsingException("The experiment {} does not exist".format(xp_id))
+        raise TouchStoneParsingException(
+            "The experiment {} does not exist".format(xp_id))
 
 
 def create_experiment(touchstone_file):
@@ -37,7 +38,8 @@ def _nonize_string(string):
 
 
 def _parse_experiment(dom, exp=None, verbose=False):
-    measures = (_parse_measure(measure_dom) for measure_dom in dom.findall('measure'))
+    measures = (_parse_measure(measure_dom)
+                for measure_dom in dom.findall('measure'))
     id = dom.get('id')
     if not id:
         raise TouchStoneParsingException("No experiment id.")
@@ -45,10 +47,11 @@ def _parse_experiment(dom, exp=None, verbose=False):
                             name=_nonize_string(dom.get('name')),
                             factors=[
                                 _parse_factor(factor_dom) for factor_dom in dom.findall('factor')
-                            ],
-                            author=dom.get('author'),
-                            measures=dict((measure.id, measure) for measure in measures),
-                            description=_nonize_string(dom.get('description')))
+    ],
+        author=dom.get('author'),
+        measures=dict((measure.id, measure)
+                      for measure in measures),
+        description=_nonize_string(dom.get('description')))
 
     run_ids = set(run.id for run in exp.runs)
     for run_dom in dom.findall('run'):
@@ -116,17 +119,21 @@ def _parse_run(dom, experiment):
 
 def _parse_factor_values_string(values_string, experiment):
     value_strings = values_string.split(',')
-    value_seq = (value_string.split('=', 1) for value_string in value_strings if value_string != "")
+    value_seq = (value_string.split('=', 1)
+                 for value_string in value_strings if value_string != "")
     values = []
     for factor_id, value_id in value_seq:
         # we cannot use a query so we have to filter by hand
         try:
-            factor = next(factor for factor in experiment.factors if factor.id == factor_id)
-            value = next(value for value in factor.values if value.id == value_id)
+            factor = next(
+                factor for factor in experiment.factors if factor.id == factor_id)
+            value = next(
+                value for value in factor.values if value.id == value_id)
             values.append(value)
         except StopIteration:
             raise TouchStoneParsingException(
-                'Factor or factor value not registered: {}={}'.format(factor_id, value_id)
+                'Factor or factor value not registered: {}={}'.format(
+                    factor_id, value_id)
             )
     return values
 
@@ -134,7 +141,8 @@ def _parse_factor_values_string(values_string, experiment):
 def _parse_block(dom, run):
     practice = dom.tag == 'practice'
     values_string = dom.get('values')
-    values = _parse_factor_values_string(dom.get('values'), run.experiment) if values_string else []
+    values = _parse_factor_values_string(
+        dom.get('values'), run.experiment) if values_string else []
     block = Block(run=run,
                   practice=practice,
                   values=values)
@@ -146,7 +154,8 @@ def _parse_block(dom, run):
 
 def _parse_trial(dom, block):
     values_string = dom.get('values')
-    values = _parse_factor_values_string(values_string, block.experiment) if values_string else []
+    values = _parse_factor_values_string(
+        values_string, block.experiment) if values_string else []
     trial = Trial(block,
                   values=values)
     return trial

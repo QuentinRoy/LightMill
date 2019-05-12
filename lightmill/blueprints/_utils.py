@@ -1,7 +1,7 @@
 import time
 from flask import jsonify
 from flask.helpers import make_response
-from errors import UnknownElement
+from .errors import UnknownElement
 from sqlalchemy.orm.exc import NoResultFound
 from ..model import Trial, Block, Run, Experiment
 
@@ -21,7 +21,8 @@ def allow_origin(blueprint):
     def create_response(response):
         """Makes all the api accessible from any origin"""
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
+        response.headers.add('Access-Control-Allow-Headers',
+                             'X-Requested-With, Content-Type')
         return response
 
 
@@ -46,7 +47,8 @@ def _inject_trial(values):
 
 
 def _inject_block(values):
-    block = Block.query.get_by_number(values['block'], values['run'], values['experiment'])
+    block = Block.query.get_by_number(
+        values['block'], values['run'], values['experiment'])
     values['experiment'] = block.experiment
     values['block'] = block
     values['run'] = block.run

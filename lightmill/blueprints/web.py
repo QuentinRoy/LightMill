@@ -7,8 +7,8 @@ from sqlalchemy import func
 from sqlalchemy.sql.expression import literal_column
 from ..model import Experiment, Run, Trial, Block, db, TrialMeasureValue, trial_factor_values, block_values
 from ..model import Measure, FactorValue, Factor
-from _utils import inject_model, convert_date
-from api.run import generate_run_trials_info
+from ._utils import inject_model, convert_date
+from .api.run import generate_run_trials_info
 
 web_blueprint = Blueprint('web', os.path.splitext(__name__)[0])
 web_blueprint.url_value_preprocessor(inject_model)
@@ -56,12 +56,14 @@ def experiment(experiment):
     run_statuses = (db.session.query(Run,
                                      func.count(Trial.completion_date),
                                      func.count(Trial.number))
-                    .outerjoin(Block, Trial)
+                    .outerjoin(Block, Block._run_db_id == Run._db_id)
+                    .outerjoin(Trial, Trial._block_db_id == Block._db_id)
                     .group_by(Run.id)).all()
     return render_template('experiment.jinja',
                            run_statuses=run_statuses,
                            experiment=experiment,
-                           completed_nb=len(filter(lambda e: e[1] == e[2], run_statuses)),
+                           completed_nb=len(
+                               [r for r in filter(lambda e: e[1] == e[2], run_statuses)]),
                            total_nb=len(run_statuses))
 
 
@@ -99,10 +101,12 @@ def generate_trial_csv(experiment):
         yield ','.join(itertools.chain(
             headers,
             (_format_csv_cell(
-                _get_free_name(f, itertools.chain(measure_ids, headers), '_factor_')
+                _get_free_name(f, itertools.chain(
+                    measure_ids, headers), '_factor_')
             ) for f in factor_ids),
             (_format_csv_cell(
-                _get_free_name(m, itertools.chain(factor_ids, headers), '_measure_')
+                _get_free_name(m, itertools.chain(
+                    factor_ids, headers), '_measure_')
             ) for m in measure_ids)
         )) + '\n'
 
@@ -127,7 +131,8 @@ def generate_trial_csv(experiment):
             .join(Factor, FactorValue.factor) \
             .join(trial_factor_values, Trial, Block, Run)
         measure_values = db.session.query(Measure.id.label('id'),
-                                          TrialMeasureValue.value.label('value'),
+                                          TrialMeasureValue.value.label(
+                                              'value'),
                                           Trial.number,
                                           Trial.completion_date,
                                           Block.number,
@@ -145,7 +150,7 @@ def generate_trial_csv(experiment):
                                                literal_column('"factors"')) \
             .join(Factor, FactorValue.factor) \
             .join(block_values, Block, Run)
-    
+
         values = measure_values.union_all(factor_values, block_factor_values) \
             .order_by(Run.id, Block.number, Trial.number)
 
@@ -176,7 +181,7 @@ def generate_trial_csv(experiment):
             if current_record is not None and not (trial_number == current_trial_number and
                                                    block_number == current_block_number and
                                                    current_run_id == run_id):
-                
+
                 if current_trial_number < 0:
                     # Case, the previous records were about block_initialization.
                     current_block_factors = current_record['factors']
@@ -185,7 +190,7 @@ def generate_trial_csv(experiment):
                     yield ','.join(generate_cells(**current_record)) + '\n'
                 # Reset the values.
                 current_record = None
-            
+
             if not current_record:
                 current_trial_number = trial_number
                 current_measured_block_num = (
@@ -236,7 +241,7 @@ def unlock_run(experiment, run):
 def run_results(experiment, run):
     factors = sorted(experiment.factors, key=lambda x: x.id)
     trial_measures = sorted((measure
-                             for measure in experiment.measures.itervalues()
+                             for measure in experiment.measures.values()
                              if measure.trial_level),
                             key=lambda x: x.id)
     factor_values_names = dict(db.session.query(FactorValue.id, FactorValue.name)
@@ -244,7 +249,8 @@ def run_results(experiment, run):
                                .filter(Factor.experiment == experiment)
                                .filter(FactorValue.name.isnot(None)))
     return render_template('results_static.jinja',
-                           trials=list(generate_run_trials_info(run, completed_only=True)),
+                           trials=list(generate_run_trials_info(
+                               run, completed_only=True)),
                            trial_measures=trial_measures,
                            factor_values_names=factor_values_names,
                            factors=factors,
@@ -255,8 +261,8 @@ def run_results(experiment, run):
 @web_blueprint.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/events')
 def events(experiment, run, block, trial):
     event_measures = sorted((measure for measure
-                            in experiment.measures.itervalues()
-                            if measure.event_level),
+                             in experiment.measures.itervalues()
+                             if measure.event_level),
                             key=lambda x: x.id)
     return render_template('events.jinja',
                            trial=trial,

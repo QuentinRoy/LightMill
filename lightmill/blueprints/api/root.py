@@ -1,8 +1,8 @@
 import os
-from StringIO import StringIO
+import io
 from flask.blueprints import Blueprint
 from flask import jsonify, request
-from experiment import props as experiment_props
+from .experiment import props as experiment_props
 from ..errors import UnknownElement
 from .._utils import allow_origin, answer_options, inject_model, register_invalid_error
 from ...touchstone import create_experiment, parse_experiment_id, TouchStoneParsingException
@@ -43,13 +43,14 @@ def experiments_list():
 def import_experiment():
     try:
         # retrieve the id of the experiment
-        expe_id = parse_experiment_id(StringIO(request.data))
+        expe_id = parse_experiment_id(io.StringIO(request.data.decode('utf8')))
         print('Importing experiment {}...'.format(expe_id))
         # check if the experiment already exists
         if db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
             raise CannotImportExperiment('Experiment already exists.')
         # create the experiment and commit the data
-        experiment = create_experiment(StringIO(request.data))
+        experiment = create_experiment(
+            io.StringIO(request.data.decode('utf8')))
         db.session.add(experiment)
         db.session.commit()
         print('Experiment imported.')

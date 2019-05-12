@@ -2,7 +2,7 @@ import os
 from flask.blueprints import Blueprint
 from flask import jsonify
 from sqlalchemy import func
-from run import run_info
+from .run import run_info
 from ..errors import UnknownElement
 from .._utils import allow_origin, answer_options, inject_model, register_invalid_error
 from ...model import Block, Trial, Run

@@ -24,11 +24,11 @@ def convert_bool(val):
 
 
 def iter_field_info(field_types):
-    for type_name, fields in field_types.iteritems():
+    for type_name, fields in field_types.items():
         for field in fields:
             field_name = field.name or field.id
             type_conflicts = dict((type_name, 0) for type_name in field_types)
-            for other_type, other_fields in field_types.iteritems():
+            for other_type, other_fields in field_types.items():
                 for other_field in other_fields:
                     other_field_name = other_field.name or other_field.id
                     if field_name == other_field_name and other_field != field:
@@ -46,7 +46,7 @@ def iter_field_info(field_types):
 
 def get_final_name(field):
     final_name = field['name'] or field['id']
-    for c_type, c_num in field['conflicts'].iteritems():
+    for c_type, c_num in field['conflicts'].items():
         if c_num > 0:
             if c_type == field['type']:
                 return u'{field_name} ({field_type} {field_id})'.format(field_name=field['name'],
@@ -76,7 +76,8 @@ def create_trial_fields(experiment):
     fields = {'header': list(Field(h_id, h_name) for h_id, h_name in headers),
               'factor': sorted(experiment.factors, key=lambda x: x.id),
               'measure': sorted(
-                  (measure for measure in experiment.measures.itervalues() if measure.trial_level),
+                  (measure for measure in experiment.measures.itervalues()
+                   if measure.trial_level),
                   key=lambda x: x.id)}
 
     field_info = OrderedDict(
@@ -100,7 +101,8 @@ def create_event_fields(experiment):
     fields = {'header': list(Field(h_id, h_name) for h_id, h_name in headers),
               'factor': sorted(experiment.factors, key=lambda x: x.id),
               'measure': sorted(
-                  (measure for measure in experiment.measures.itervalues() if measure.event_level),
+                  (measure for measure in experiment.measures.itervalues()
+                   if measure.event_level),
                   key=lambda x: x.id)}
 
     field_info = OrderedDict(
@@ -143,8 +145,8 @@ def run_csv_export(run, trial_logger, events_log_dir,
 
     for trial in run.trials:
         sys.stdout.write('  Trial {} of block {}...'.format(
-                    trial.number,
-                    trial.block.number))
+            trial.number,
+            trial.block.number))
         sys.stdout.flush()
         factor_values = list(trial.iter_all_factor_values())
         trial_start = time.time()
@@ -188,11 +190,11 @@ def run_csv_export(run, trial_logger, events_log_dir,
     run_end = time.time()
     print('Run {} exported.'.format(run.id))
     print('{} sec, {:.2f} sec/trials, {:} ms/events, {} trials, {} events'.format(
-                        round(run_end - run_start),
-                        trial_export_time / trial_count,
-                        round((event_export_time / event_count) * 1000),
-                        trial_count,
-                        event_count))
+        round(run_end - run_start),
+        trial_export_time / trial_count,
+        round((event_export_time / event_count) * 1000),
+        trial_count,
+        event_count))
 
 
 def get_trial_row(trial, fields, factor_values):

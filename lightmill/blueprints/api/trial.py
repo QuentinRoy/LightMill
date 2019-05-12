@@ -49,7 +49,7 @@ def post_result(experiment, run, block, trial):
     # Do not use request.get_json() to support unset content type and allow POST requests
     # without preflight.
     data = json.loads(request.data)
-    
+
     # check the token
     token = data['token']
     if run.token is None:
@@ -106,7 +106,8 @@ def post_result(experiment, run, block, trial):
 @blueprint.route('/<experiment>/<run>/<int:block>/<int:trial>', methods=['GET'])
 def trial_info(trial, experiment=None, run=None, block=None):
     factors = trial.experiment.factors
-    exp_values = (factor.default_value for factor in factors if factor.default_value)
+    exp_values = (
+        factor.default_value for factor in factors if factor.default_value)
     block_values = (value for value in trial.block.factor_values)
     factor_values = dict((value.factor.id, value.id)
                          for value
@@ -206,7 +207,7 @@ def _convert_measures(measures):
 
 def _get_measures_paths(measures):
     if isinstance(measures, dict):
-        for path_head, path_tail in measures.iteritems():
+        for path_head, path_tail in measures.items():
             for path_tail, value in _get_measures_paths(path_tail):
                 yield [path_head] + path_tail, value
     elif isinstance(measures, list):

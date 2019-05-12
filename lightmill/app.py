@@ -2,11 +2,11 @@ __author__ = 'Quentin Roy'
 
 import os
 from flask import Flask
-from blueprints.web import web_blueprint
-from blueprints.api import experiment_blueprint, run_blueprint, block_blueprint, trial_blueprint
-from blueprints.api import root_blueprint as api_root_blueprint
-from model import db, Experiment
-from touchstone import create_experiment, parse_experiment_id
+from .blueprints.web import web_blueprint
+from .blueprints.api import experiment_blueprint, run_blueprint, block_blueprint, trial_blueprint
+from .blueprints.api import root_blueprint as api_root_blueprint
+from .model import db, Experiment
+from .touchstone import create_experiment, parse_experiment_id
 
 
 def create_app(database_uri,
@@ -24,7 +24,8 @@ def create_app(database_uri,
     app.config['UNPROTECTED_RUNS'] = do_not_protect_runs
     app.config['ADD_MISSING_MEASURES'] = add_missing_measures
     # FIXME: This depends on the current package and how it is run. Breaks easily.
-    app.jinja_env.add_extension("lightmill.jinja2htmlcompress.SelectiveHTMLCompress")
+    app.jinja_env.add_extension(
+        "lightmill.jinja2htmlcompress.SelectiveHTMLCompress")
 
     app.register_blueprint(web_blueprint)
     app.register_blueprint(api_root_blueprint, url_prefix='/api')
@@ -47,7 +48,8 @@ def import_experiment(app, touchstone_file):
     expe_id = parse_experiment_id(touchstone_file)
     with app.test_request_context():
         if not db.session.query(Experiment.query.filter_by(id=expe_id).exists()).scalar():
-            print("Importing experiment {} from {}..".format(expe_id, touchstone_file))
+            print("Importing experiment {} from {}..".format(
+                expe_id, touchstone_file))
             experiment = create_experiment(touchstone_file)
             db.session.add(experiment)
             db.session.commit()

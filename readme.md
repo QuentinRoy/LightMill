@@ -1,23 +1,21 @@
 # LightMill
 
-*LightMill* is a user experiment web server used to manage and log experiments running in browsers.
+_LightMill_ is a user experiment web server used to manage and log experiments running in browsers.
 It uses [TouchStone](https://www.lri.fr/~appert/website/touchstone/touchstone.html)'s design files
 and provides a web interface to monitor an ongoing experiment. The touchstone design platform
 can be downloaded from [here](https://github.com/jdfekete/touchstone-platforms/tree/master/design-platform).
 
 ## Make it run!
 
-
 ```shell
 ./configure.sh
 ./start.sh
 ```
 
-You need a python 2.7 interpreter and `virtualenv` installed. If
-`virtualenv` is unfound, you can install it with
-`easy_install virtualenv`. Using `virtualenv` makes sure
-all of the project's dependencies are installed locally and
-we do not pollute your python global libraries.
+You need a python 3.7 interpreter and `virtualenv` installed. If
+`virtualenv` is unfound, you can install it with `easy_install virtualenv`.
+`virtualenv` ensures the project's dependencies are installed locally and
+do not pollute your python global libraries.
 
 You can then access the web interface from `localhost` on the
 corresponding port.
@@ -31,7 +29,7 @@ the `--experiment-design` command line option.
 
 [`lightmill-runner`](https://github.com/QuentinRoy/lightmill-js/tree/master/packages/lightmill-runner) is a JavasCript library that is used to interface your experiment application with `LightMill`.
 
-Additionally [`lightmill-app`](https://github.com/QuentinRoy/lightmill-js/tree/master/packages/lightmill-app) provides a set of standard views such as `blockInit` or `end` for you to use in your application. 
+Additionally [`lightmill-app`](https://github.com/QuentinRoy/lightmill-js/tree/master/packages/lightmill-app) provides a set of standard views such as `blockInit` or `end` for you to use in your application.
 
 ## Grab the results!
 
@@ -39,7 +37,6 @@ The trial results can be downloaded from the bottom of the experiment page from 
 
 Currently, the only way to export the event logs is by using the
 `./export.sh` script (slow and hopefully deprecated soon).
-
 
 ## Locked run
 
@@ -63,6 +60,7 @@ running the actual experiment and should never be used in production.
 ```shell
 ./start.sh --help
 ```
+
 ## API
 
 TODO

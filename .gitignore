@@ -10,3 +10,4 @@ pypyvenv
 *.DS_Store
 export
 *.orig
+.vscode

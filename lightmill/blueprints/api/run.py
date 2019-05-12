@@ -3,8 +3,8 @@ import uuid
 import json
 from flask import jsonify, request, current_app as app, Response
 from flask.blueprints import Blueprint
-from trial import trial_info
-from block import generate_block_trials_info
+from .trial import trial_info
+from .block import generate_block_trials_info
 from ...model import db
 from .._utils import allow_origin, inject_model, answer_options, register_invalid_error
 from ..errors import UnknownElement

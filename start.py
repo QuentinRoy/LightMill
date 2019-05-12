@@ -1,7 +1,7 @@
 if __name__ == '__main__':
     import argparse
     import sys
-    from gevent.wsgi import WSGIServer
+    from gevent.pywsgi import WSGIServer
     from lightmill.queryyesno import query_yes_no
     from lightmill.app import create_app, import_experiment
     import lightmill.default_settings as default_settings
