@@ -61,6 +61,53 @@ running the actual experiment and should never be used in production.
 ./start.sh --help
 ```
 
+
+## Run with docker
+
+A docker file is provided to create a docker image that can be used both to create
+the server and grab the results.
+
+### Creating the image
+
+```sh
+docker build -t lightmill .
+```
+
+### Starting the server
+
+```sh
+docker run -d \
+  --mount source=lightmill,target=/data \
+  --name lightmill_server \
+  lightmill start.sh
+```
+
+Note: this is using the "lightmill" volume to store the data.
+It is automatically managed by docker.
+
+### Grab the results
+
+```sh
+docker run --mount source=lightmill,target=/data lightmill export.sh
+docker cp lightmill_server:/data/export ./export
+```
+
+### Backup the database
+
+```sh
+docker cp lightmill_server:/data/experiments.db .
+```
+
+### Clear the data
+
+Once the experiment is finished, you may want to remove the volume allocated by
+docker to free up some space.
+
+```sh
+docker volume rm lightmill
+```
+
+
 ## API
 
 TODO
