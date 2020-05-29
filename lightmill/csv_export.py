@@ -4,6 +4,7 @@ from .app import create_app
 from .default_settings import DATABASE_URI
 from .model import Experiment
 import os
+import sys
 import time
 from csv import DictWriter
 from collections import OrderedDict
@@ -79,7 +80,7 @@ def create_trial_fields(experiment):
         "measure": sorted(
             (
                 measure
-                for measure in experiment.measures.itervalues()
+                for measure in experiment.measures.values()
                 if measure.trial_level
             ),
             key=lambda x: x.id,
@@ -112,7 +113,7 @@ def create_event_fields(experiment):
         "measure": sorted(
             (
                 measure
-                for measure in experiment.measures.itervalues()
+                for measure in experiment.measures.values()
                 if measure.event_level
             ),
             key=lambda x: x.id,
@@ -133,12 +134,12 @@ def create_event_fields(experiment):
 def create_logger(fields, target_path):
     field_names = []
 
-    for sub_fields in fields.itervalues():
-        for field in sub_fields.itervalues():
+    for sub_fields in fields.values():
+        for field in sub_fields.values():
             field_names.append(field["final_name"])
 
     target_file = open(target_path, "w")
-    dict_writer = DictWriter(target_file, field_names, delimiter=DELIMITER)
+    dict_writer = DictWriter(target_file, field_names)
     dict_writer.writeheader()
     return dict_writer
 

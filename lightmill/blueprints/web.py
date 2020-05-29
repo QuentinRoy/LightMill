@@ -261,7 +261,7 @@ def run_results(experiment, run):
 @web_blueprint.route('/trial/<experiment>/<run>/<int:block>/<int:trial>/events')
 def events(experiment, run, block, trial):
     event_measures = sorted((measure for measure
-                             in experiment.measures.itervalues()
+                             in experiment.measures.values()
                              if measure.event_level),
                             key=lambda x: x.id)
     return render_template('events.jinja',
