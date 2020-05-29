@@ -61,7 +61,6 @@ running the actual experiment and should never be used in production.
 ./start.sh --help
 ```
 
-
 ## Run with docker
 
 A docker file is provided to create a docker image that can be used both to create
@@ -78,6 +77,7 @@ docker build -t lightmill .
 ```sh
 docker run -d \
   --mount source=lightmill,target=/data \
+  --dp 5000:80 \
   --name lightmill_server \
   lightmill start.sh
 ```
@@ -92,10 +92,12 @@ docker run --mount source=lightmill,target=/data lightmill export.sh
 docker cp lightmill_server:/data/export ./export
 ```
 
+Note: the lightmill_server container must exist for this to work.
+
 ### Backup the database
 
 ```sh
-docker cp lightmill_server:/data/experiments.db .
+docker cp lightmill:/data/experiments.db .
 ```
 
 ### Clear the data
@@ -106,7 +108,6 @@ docker to free up some space.
 ```sh
 docker volume rm lightmill
 ```
-
 
 ## API
 
