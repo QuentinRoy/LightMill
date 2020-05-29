@@ -73,10 +73,16 @@ if __name__ == "__main__":
         " development. DO NOT USE IN PRODUCTION. The data cannot be exported"
         " in any way.",
     )
+    parser.add_argument(
+        "--force",
+        default=False,
+        action="store_true",
+        help="Do not ask for confirmation when using --volatile or --unprotected-runs",
+    )
 
     args = parser.parse_args()
 
-    if args.volatile or args.unprotected_runs:
+    if (args.volatile or args.unprotected_runs) and not args.force:
         if not query_yes_no(
             "WARNING: '--unprotected-runs' and '--volatile' are unfit for"
             " production and must not be used during an actual experiment."
