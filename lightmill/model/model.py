@@ -1,4 +1,4 @@
-__author__ = 'Quentin Roy'
+__author__ = "Quentin Roy"
 
 from sqlalchemy.orm.exc import NoResultFound
 from flask_sqlalchemy import SQLAlchemy, BaseQuery
@@ -36,15 +36,19 @@ class Experiment(db.Model):
     author = db.Column(db.String(200), nullable=True)
     description = db.Column(db.Text, nullable=True)
 
-    factors = db.relationship('Factor',
-                              backref=db.backref('experiment', lazy='joined'),
-                              lazy='dynamic',
-                              cascade="all, delete-orphan")
+    factors = db.relationship(
+        "Factor",
+        backref=db.backref("experiment", lazy="joined"),
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
 
-    measures = db.relationship('Measure',
-                               backref=db.backref('experiment', lazy='joined'),
-                               cascade="all, delete-orphan",
-                               collection_class=attribute_mapped_collection('id'))
+    measures = db.relationship(
+        "Measure",
+        backref=db.backref("experiment", lazy="joined"),
+        cascade="all, delete-orphan",
+        collection_class=attribute_mapped_collection("id"),
+    )
 
     def __init__(self, id, name, factors, measures, author=None, description=None):
         self.name = name
@@ -55,8 +59,9 @@ class Experiment(db.Model):
         self.measures = measures
 
     def __repr__(self):
-        return "<{} {} (name: '{}')>" \
-            .format(self.__class__.__name__, self.id, self.name)
+        return "<{} {} (name: '{}')>".format(
+            self.__class__.__name__, self.id, self.name
+        )
 
     def get_factor(self, factor_id):
         return self.factors.filter_by(id=factor_id).one()
@@ -74,28 +79,33 @@ class Experiment(db.Model):
 class Run(db.Model):
     class RunQuery(BaseQuery):
         def get_by_id(self, run_id, experiment_id):
-            return Run.query.join(Experiment).filter(Run.id == run_id).filter(
-                Experiment.id == experiment_id
-                ).one()
+            return (
+                Run.query.join(Experiment)
+                .filter(Run.id == run_id)
+                .filter(Experiment.id == experiment_id)
+                .one()
+            )
 
     query_class = RunQuery
 
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
+    _experiment_db_id = db.Column(
+        db.Integer, db.ForeignKey(Experiment._db_id), nullable=False
+    )
 
     id = db.Column(db.String(20), index=True)
 
     token = db.Column(db.String(50), unique=True)
 
-    experiment = db.relationship(Experiment,
-                                 backref=db.backref('runs',
-                                                    lazy='dynamic',
-                                                    cascade='all, delete-orphan'),
-                                 lazy='joined')
+    experiment = db.relationship(
+        Experiment,
+        backref=db.backref("runs", lazy="dynamic", cascade="all, delete-orphan"),
+        lazy="joined",
+    )
 
     __table_args__ = (
         db.UniqueConstraint("_experiment_db_id", "id"),
-        db.Index('index_xp_runs', '_experiment_db_id')
+        db.Index("index_xp_runs", "_experiment_db_id"),
     )
 
     def __init__(self, id, experiment):
@@ -108,19 +118,23 @@ class Run(db.Model):
 
     @property
     def trials(self):
-        return Trial.query.options(db.joinedload(Trial.block)) \
-            .join(Block, Run).order_by(Block.number, Trial.number) \
+        return (
+            Trial.query.options(db.joinedload(Trial.block))
+            .join(Block, Run)
+            .order_by(Block.number, Trial.number)
             .filter(Block.run == self)
+        )
 
     def current_trial(self):
         return self.trials.filter(Trial.completion_date.is_(None)).first()
 
     def __repr__(self):
-        return '<{} {} (experiment id: {}, token: {})>' \
-            .format(self.__class__.__name__,
-                    self.id,
-                    self.experiment.id if self.experiment else None,
-                    self.token)
+        return "<{} {} (experiment id: {}, token: {})>".format(
+            self.__class__.__name__,
+            self.id,
+            self.experiment.id if self.experiment else None,
+            self.token,
+        )
 
     def completed(self):
         exist_query = self.trials.filter(Trial.completion_date.is_(None)).exists()
@@ -168,42 +182,54 @@ class Run(db.Model):
 
 
 block_values = db.Table(
-    'block_values',
-    db.Column('block_db_id', db.Integer, db.ForeignKey('block._db_id')),
-    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id')),
-    db.Index('index_block_factor_values', 'block_db_id')
+    "block_values",
+    db.Column("block_db_id", db.Integer, db.ForeignKey("block._db_id")),
+    db.Column("factor_value_db_id", db.Integer, db.ForeignKey("factor_value._db_id")),
+    db.Index("index_block_factor_values", "block_db_id"),
 )
 
 
 class Block(db.Model):
     class BlockQuery(BaseQuery):
         def get_by_number(self, block_number, run_id, experiment_id):
-            return Block.query \
-                .join(Run, Experiment) \
-                .filter(Block.number == block_number,
-                        Experiment.id == experiment_id,
-                        Run.id == run_id).one()
+            return (
+                Block.query.join(Run, Experiment)
+                .filter(
+                    Block.number == block_number,
+                    Experiment.id == experiment_id,
+                    Run.id == run_id,
+                )
+                .one()
+            )
 
     query_class = BlockQuery
 
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    _run_db_id = db.Column(db.Integer, db.ForeignKey(Run._db_id), nullable=False, index=True)
+    _run_db_id = db.Column(
+        db.Integer, db.ForeignKey(Run._db_id), nullable=False, index=True
+    )
 
-    run = db.relationship(Run,
-                          backref=db.backref('blocks',
-                                             lazy='dynamic',
-                                             cascade="all, delete-orphan",
-                                             order_by='Block.number'),
-                          lazy='joined')
+    run = db.relationship(
+        Run,
+        backref=db.backref(
+            "blocks",
+            lazy="dynamic",
+            cascade="all, delete-orphan",
+            order_by="Block.number",
+        ),
+        lazy="joined",
+    )
 
     number = db.Column(db.Integer, nullable=False)
     practice = db.Column(db.Boolean)
-    factor_values = db.relationship('FactorValue', secondary=block_values, lazy='joined')
+    factor_values = db.relationship(
+        "FactorValue", secondary=block_values, lazy="joined"
+    )
 
     __table_args__ = (
         db.UniqueConstraint("_run_db_id", "number"),
-        db.Index("index_run_blocks", "_run_db_id")
+        db.Index("index_run_blocks", "_run_db_id"),
     )
 
     @property
@@ -213,18 +239,21 @@ class Block(db.Model):
     def __init__(self, run, values, number=None, practice=False):
         self.practice = practice
         self.number = (
-            number if number is not None else _free_number(block.number for block in run.blocks)
+            number
+            if number is not None
+            else _free_number(block.number for block in run.blocks)
         )
         self.run = run
         self.factor_values = values
 
     def __repr__(self):
-        return '<{} {} (run id: {}, experiment id: {}>'.format(
+        return "<{} {} (run id: {}, experiment id: {}>".format(
             self.__class__.__name__,
             self.number,
             self.run.id if self.run is not None else None,
-            self.run.experiment.id if self.run is not None and self.run.experiment is not None
-            else None
+            self.run.experiment.id
+            if self.run is not None and self.run.experiment is not None
+            else None,
         )
 
     def measured_block_number(self):
@@ -241,53 +270,69 @@ class Block(db.Model):
 
 
 trial_factor_values = db.Table(
-    'trial_factor_values',
-    db.Column('trial_db_id', db.Integer, db.ForeignKey('trial._db_id')),
-    db.Column('factor_value_db_id', db.Integer, db.ForeignKey('factor_value._db_id')),
-    db.Index('index_trial_factor_values', 'trial_db_id')
+    "trial_factor_values",
+    db.Column("trial_db_id", db.Integer, db.ForeignKey("trial._db_id")),
+    db.Column("factor_value_db_id", db.Integer, db.ForeignKey("factor_value._db_id")),
+    db.Index("index_trial_factor_values", "trial_db_id"),
 )
 
 
 class Trial(db.Model):
     class TrialQuery(BaseQuery):
         def get_by_number(self, trial_number, block_number, run_id, experiment_id):
-            return Trial.query \
-                .join(Block, Run, Experiment) \
-                .filter(Trial.number == trial_number,
-                        Block.number == block_number,
-                        Experiment.id == experiment_id,
-                        Run.id == run_id).one()
+            return (
+                Trial.query.join(Block, Run, Experiment)
+                .filter(
+                    Trial.number == trial_number,
+                    Block.number == block_number,
+                    Experiment.id == experiment_id,
+                    Run.id == run_id,
+                )
+                .one()
+            )
 
     query_class = TrialQuery
 
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    _block_db_id = db.Column(db.Integer, db.ForeignKey(Block._db_id), nullable=False, index=True)
+    _block_db_id = db.Column(
+        db.Integer, db.ForeignKey(Block._db_id), nullable=False, index=True
+    )
 
-    block = db.relationship(Block,
-                            backref=db.backref('trials',
-                                               lazy='dynamic',
-                                               cascade="all, delete-orphan",
-                                               order_by='Trial.number'),
-                            lazy='joined')
+    block = db.relationship(
+        Block,
+        backref=db.backref(
+            "trials",
+            lazy="dynamic",
+            cascade="all, delete-orphan",
+            order_by="Trial.number",
+        ),
+        lazy="joined",
+    )
 
-    factor_values = db.relationship('FactorValue', secondary=trial_factor_values, lazy='joined')
+    factor_values = db.relationship(
+        "FactorValue", secondary=trial_factor_values, lazy="joined"
+    )
     number = db.Column(db.Integer, nullable=False)
     completion_date = db.Column(db.DateTime)
-    measure_values = db.relationship('TrialMeasureValue',
-                                     cascade="all, delete-orphan",
-                                     backref=db.backref('trial'),
-                                     lazy='joined')
+    measure_values = db.relationship(
+        "TrialMeasureValue",
+        cascade="all, delete-orphan",
+        backref=db.backref("trial"),
+        lazy="joined",
+    )
 
-    events = db.relationship('Event',
-                             cascade="all, delete-orphan",
-                             backref=db.backref('trial'),
-                             lazy="dynamic",
-                             order_by='Event.number')
+    events = db.relationship(
+        "Event",
+        cascade="all, delete-orphan",
+        backref=db.backref("trial"),
+        lazy="dynamic",
+        order_by="Event.number",
+    )
 
     __table_args__ = (
         db.UniqueConstraint("number", "_block_db_id"),
-        db.Index("index_block_trials", "_block_db_id")
+        db.Index("index_block_trials", "_block_db_id"),
     )
 
     @property
@@ -308,33 +353,22 @@ class Trial(db.Model):
     def previous(self):
         if self.number > 0:
             return Trial.query.get_by_number(
-                self.number - 1,
-                self.block.number,
-                self.run.id,
-                self.experiment.id
+                self.number - 1, self.block.number, self.run.id, self.experiment.id
             )
         elif self.block.number > 0:
             block = Block.query.get_by_number(
-                self.block.number - 1,
-                self.run.id,
-                self.experiment.id
+                self.block.number - 1, self.run.id, self.experiment.id
             )
             return block.trials.filter(Trial.number == block.length() - 1).one()
 
     def next(self):
         if self.number + 1 < self.block.length():
             return Trial.query.get_by_number(
-                self.number + 1,
-                self.block.number,
-                self.run.id,
-                self.experiment.id
+                self.number + 1, self.block.number, self.run.id, self.experiment.id
             )
         elif self.block.number + 1 < self.run.block_count():
             return Trial.query.get_by_number(
-                0,
-                self.block.number + 1,
-                self.run.id,
-                self.experiment.id
+                0, self.block.number + 1, self.run.id, self.experiment.id
             )
 
     @property
@@ -360,7 +394,9 @@ class Trial(db.Model):
 
     def __init__(self, block, values, number=None):
         self.number = (
-            number if number is not None else _free_number(trial.number for trial in block.trials)
+            number
+            if number is not None
+            else _free_number(trial.number for trial in block.trials)
         )
         self.block = block
         self.factor_values = values
@@ -371,25 +407,33 @@ class Trial(db.Model):
         self.measure_values[measure_id] = measure_value
 
     def __repr__(self):
-        return '<{} {} (block number: {}, run id: {}, experiment id: {}, completion date: {})>' \
-            .format(self.__class__.__name__,
-                    self.number,
-                    self.block.number if self.block else None,
-                    self.block.run.id if self.block is not None and self.block.run is not None
-                    else None,
-                    self.block.run.experiment.id if (self.block is not None and
-                                                     self.block.run is not None and
-                                                     self.block.run.experiment is not None)
-                    else None,
-                    self.completion_date.ctime() if self.completion_date else None)
+        return "<{} {} (block number: {}, run id: {}, experiment id: {}, completion date: {})>".format(
+            self.__class__.__name__,
+            self.number,
+            self.block.number if self.block else None,
+            self.block.run.id
+            if self.block is not None and self.block.run is not None
+            else None,
+            self.block.run.experiment.id
+            if (
+                self.block is not None
+                and self.block.run is not None
+                and self.block.run.experiment is not None
+            )
+            else None,
+            self.completion_date.ctime() if self.completion_date else None,
+        )
 
 
 class Factor(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
-    _default_value_db_id = db.Column(db.Integer, db.ForeignKey('factor_value._db_id',
-                                                               use_alter=True,
-                                                               name="fk_default_value"))
+    _experiment_db_id = db.Column(
+        db.Integer, db.ForeignKey(Experiment._db_id), nullable=False
+    )
+    _default_value_db_id = db.Column(
+        db.Integer,
+        db.ForeignKey("factor_value._db_id", use_alter=True, name="fk_default_value"),
+    )
 
     id = db.Column(db.String(80), nullable=False)
     name = db.Column(db.String(200))
@@ -397,17 +441,21 @@ class Factor(db.Model):
     kind = db.Column(db.String(20))
     tag = db.Column(db.String(80))
 
-    default_value = db.relationship('FactorValue',
-                                    uselist=False,
-                                    post_update=True,
-                                    foreign_keys=[_default_value_db_id])
+    default_value = db.relationship(
+        "FactorValue",
+        uselist=False,
+        post_update=True,
+        foreign_keys=[_default_value_db_id],
+    )
 
     __table_args__ = (
         db.UniqueConstraint("id", "_experiment_db_id"),
-        db.Index("index_xp_factors", "_experiment_db_id")
+        db.Index("index_xp_factors", "_experiment_db_id"),
     )
 
-    def __init__(self, id, values, type, name=None, kind=None, tag=None, default_value=None):
+    def __init__(
+        self, id, values, type, name=None, kind=None, tag=None, default_value=None
+    ):
         if default_value is not None and default_value not in values:
             raise "Factor default value must be in values"
         self.id = id
@@ -419,14 +467,15 @@ class Factor(db.Model):
         self.default_value = default_value
 
     def __repr__(self):
-        return "<{} {} (name: '{}', experiment id: {}, type: {}, kind: {}, tag: {}>" \
-            .format(self.__class__.__name__,
-                    self.id,
-                    self.name,
-                    self.experiment.id if self.experiment is not None else None,
-                    self.type,
-                    self.kind,
-                    self.tag)
+        return "<{} {} (name: '{}', experiment id: {}, type: {}, kind: {}, tag: {}>".format(
+            self.__class__.__name__,
+            self.id,
+            self.name,
+            self.experiment.id if self.experiment is not None else None,
+            self.type,
+            self.kind,
+            self.tag,
+        )
 
 
 class FactorValue(db.Model):
@@ -436,17 +485,18 @@ class FactorValue(db.Model):
     id = db.Column(db.String(40), nullable=False)
     name = db.Column(db.String(200))
 
-    factor = db.relationship('Factor',
-                             backref=db.backref('values',
-                                                lazy='joined'),
-                             single_parent=True,
-                             lazy='joined',
-                             foreign_keys=[_factor_db_id],
-                             cascade="all, delete-orphan")
+    factor = db.relationship(
+        "Factor",
+        backref=db.backref("values", lazy="joined"),
+        single_parent=True,
+        lazy="joined",
+        foreign_keys=[_factor_db_id],
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
-        db.UniqueConstraint('id', '_factor_db_id'),
-        db.Index('index_factor_factorvalue', '_factor_db_id')
+        db.UniqueConstraint("id", "_factor_db_id"),
+        db.Index("index_factor_factorvalue", "_factor_db_id"),
     )
 
     @property
@@ -462,22 +512,25 @@ class FactorValue(db.Model):
             id=self.id,
             name=self.name,
             class_name=self.__class__.__name__,
-            factor=self.factor.id if self.factor is not None else None
+            factor=self.factor.id if self.factor is not None else None,
         )
 
 
 class Measure(db.Model):
     class MeasureQuery(BaseQuery):
         def get_by_id(self, measure_id, experiment_id):
-            return Measure.query \
-                .join(Experiment) \
-                .filter(Measure.id == measure_id,
-                        Experiment.id == experiment_id).one()
+            return (
+                Measure.query.join(Experiment)
+                .filter(Measure.id == measure_id, Experiment.id == experiment_id)
+                .one()
+            )
 
     query_class = MeasureQuery
 
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    _experiment_db_id = db.Column(db.Integer, db.ForeignKey(Experiment._db_id), nullable=False)
+    _experiment_db_id = db.Column(
+        db.Integer, db.ForeignKey(Experiment._db_id), nullable=False
+    )
 
     id = db.Column(db.String(80), nullable=False)
     trial_level = db.Column(db.Boolean, nullable=False)
@@ -486,9 +539,9 @@ class Measure(db.Model):
     type = db.Column(db.String(80))
 
     __table_args__ = (
-        db.CheckConstraint("trial_level OR event_level", name='at_least_one'),
+        db.CheckConstraint("trial_level OR event_level", name="at_least_one"),
         # db.UniqueConstraint("id", "_experiment_db_id"),
-        db.Index('index_measure', 'id', '_experiment_db_id', unique=True),
+        db.Index("index_measure", "id", "_experiment_db_id", unique=True),
         # db.Index('index_xp_measure', '_experiment_db_id')
     )
 
@@ -502,32 +555,35 @@ class Measure(db.Model):
     def levels(self):
         levels = []
         if self.trial_level:
-            levels.append('trial')
+            levels.append("trial")
         if self.event_level:
-            levels.append('event')
+            levels.append("event")
         return levels
 
     def __repr__(self):
         levels = self.levels()
-        return "<{} {} (name: '{}', experiment id: {}, type: {}, level{}: {})>" \
-            .format(self.__class__.__name__,
-                    self.id,
-                    self.name,
-                    self.experiment.id if self.experiment is not None else None,
-                    self.type,
-                    's' if len(levels) > 1 else '',
-                    ' and '.join(levels))
+        return "<{} {} (name: '{}', experiment id: {}, type: {}, level{}: {})>".format(
+            self.__class__.__name__,
+            self.id,
+            self.name,
+            self.experiment.id if self.experiment is not None else None,
+            self.type,
+            "s" if len(levels) > 1 else "",
+            " and ".join(levels),
+        )
 
 
 class Event(db.Model):
     _db_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False)
     number = db.Column(db.Integer, nullable=False)
-    measure_values = db.relationship('EventMeasureValue',
-                                     cascade="all, delete-orphan",
-                                     backref=db.backref('event'),
-                                     lazy='joined',
-                                     collection_class=attribute_mapped_collection('measure.id'))
+    measure_values = db.relationship(
+        "EventMeasureValue",
+        cascade="all, delete-orphan",
+        backref=db.backref("event"),
+        lazy="joined",
+        collection_class=attribute_mapped_collection("measure.id"),
+    )
 
     def __init__(self, measure_values, number, trial=None):
         for measure_value in measure_values:
@@ -536,8 +592,8 @@ class Event(db.Model):
         self.trial = trial
 
     __table_args__ = (
-        db.UniqueConstraint('number', '_trial_db_id'),
-        db.Index('index_trial_events', '_trial_db_id')
+        db.UniqueConstraint("number", "_trial_db_id"),
+        db.Index("index_trial_events", "_trial_db_id"),
     )
 
 
@@ -552,7 +608,7 @@ class MeasureValue(AbstractConcreteBase, db.Model):
 
     @declared_attr
     def measure(cls):
-        return db.relationship(Measure, lazy='joined')
+        return db.relationship(Measure, lazy="joined")
 
     def __init__(self, value, measure, experiment_id=None):
         if not isinstance(measure, Measure):
@@ -565,9 +621,9 @@ class MeasureValue(AbstractConcreteBase, db.Model):
         self.value = value
 
     def __repr__(self):
-        return "<{} of {} (value: '{}')>".format(self.__class__.__name__,
-                                                 self.measure.id,
-                                                 self.value)
+        return "<{} of {} (value: '{}')>".format(
+            self.__class__.__name__, self.measure.id, self.value
+        )
 
 
 class MeasureLevelError(ValueError):
@@ -575,38 +631,41 @@ class MeasureLevelError(ValueError):
 
 
 class TrialMeasureValue(MeasureValue):
-    __tablename__ = 'trial_measure_value'
-    __mapper_args__ = {'concrete': True,
-                       'polymorphic_identity': 'trial_measure_value'}
+    __tablename__ = "trial_measure_value"
+    __mapper_args__ = {"concrete": True, "polymorphic_identity": "trial_measure_value"}
     _trial_db_id = db.Column(db.Integer, db.ForeignKey(Trial._db_id), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("_measure_db_id", "_trial_db_id"),
-        db.Index('index_trial_measure_values', '_trial_db_id'),
+        db.Index("index_trial_measure_values", "_trial_db_id"),
     )
 
     def __init__(self, *args, **kwargs):
         super(TrialMeasureValue, self).__init__(*args, **kwargs)
         if not self.measure.trial_level:
             raise MeasureLevelError(
-                "Associated measure ({}) is not at the trial level.".format(self.measure.id)
+                "Associated measure ({}) is not at the trial level.".format(
+                    self.measure.id
+                )
             )
 
 
 class EventMeasureValue(MeasureValue):
-    __tablename__ = 'event_measure_value'
-    __mapper_args__ = {'concrete': True,
-                       'polymorphic_identity': 'event_measure_value'}
+    __tablename__ = "event_measure_value"
+    __mapper_args__ = {"concrete": True, "polymorphic_identity": "event_measure_value"}
     _event_db_id = db.Column(db.Integer, db.ForeignKey(Event._db_id), nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("_measure_db_id", "_event_db_id"),
-        db.Index('index_event_measure_values', '_event_db_id'),
+        db.Index("index_event_measure_values", "_event_db_id"),
     )
 
     def __init__(self, *args, **kwargs):
         super(EventMeasureValue, self).__init__(*args, **kwargs)
         if not self.measure.event_level:
             raise MeasureLevelError(
-                "Associated measure ({}) is not at the event level.".format(self.measure.id)
+                "Associated measure ({}) is not at the event level.".format(
+                    self.measure.id
+                )
             )
+

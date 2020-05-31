@@ -18,25 +18,25 @@ from jinja2.lexer import Token, describe_token
 from jinja2 import TemplateSyntaxError
 
 
-_tag_re = re.compile(r'(?:<(/?)([:a-zA-Z0-9_-]+)\s*|(>\s*))(?s)')
-_ws_normalize_re = re.compile(r'[ \t\r\n]+')
+_tag_re = re.compile(r"(?:<(/?)([:a-zA-Z0-9_-]+)\s*|(>\s*))(?s)")
+_ws_normalize_re = re.compile(r"[ \t\r\n]+")
 _incomplete_class_re = re.compile(r'(^class|^.* class)="[^"]+$', re.DOTALL)
-_incomplete_tag_re = re.compile(r'.*<[a-zA-Z]*$', re.DOTALL)
-_closing_tag_re = re.compile(r'.*/[:a-zA-Z]*>$', re.DOTALL)
-_opening_tag_re = re.compile(r'^<[:a-zA-Z]+.*', re.DOTALL)
+_incomplete_tag_re = re.compile(r".*<[a-zA-Z]*$", re.DOTALL)
+_closing_tag_re = re.compile(r".*/[:a-zA-Z]*>$", re.DOTALL)
+_opening_tag_re = re.compile(r"^<[:a-zA-Z]+.*", re.DOTALL)
 _end_attr_re = re.compile(r'.*[:a-zA-Z0-9_-]*="[:a-zA-Z0-9-_]*"$', re.DOTALL)
 
 
 class StreamProcessContext(object):
-
     def __init__(self, stream):
         self.stream = stream
         self.token = None
         self.stack = []
 
     def fail(self, message):
-        raise TemplateSyntaxError(message, self.token.lineno,
-                                  self.stream.name, self.stream.filename)
+        raise TemplateSyntaxError(
+            message, self.token.lineno, self.stream.name, self.stream.filename
+        )
 
 
 def _make_dict_from_listing(listing):
@@ -48,34 +48,61 @@ def _make_dict_from_listing(listing):
 
 
 class HTMLCompress(Extension):
-    isolated_elements = set(['style', 'noscript', 'textarea'])
-    void_elements = set(['br', 'img', 'area', 'hr', 'param', 'input',
-                         'embed', 'col'])
-    block_elements = set(['div', 'p', 'form', 'ul', 'ol', 'li', 'table', 'tr',
-                          'tbody', 'thead', 'tfoot', 'tr', 'td', 'th', 'dl',
-                          'dt', 'dd', 'blockquote', 'h1', 'h2', 'h3', 'h4',
-                          'h5', 'h6', 'pre'])
-    breaking_rules = _make_dict_from_listing([
-        (['p'], set(['#block'])),
-        (['li'], set(['li'])),
-        (['td', 'th'], set(['td', 'th', 'tr', 'tbody', 'thead', 'tfoot'])),
-        (['tr'], set(['tr', 'tbody', 'thead', 'tfoot'])),
-        (['thead', 'tbody', 'tfoot'], set(['thead', 'tbody', 'tfoot'])),
-        (['dd', 'dt'], set(['dl', 'dt', 'dd']))
-    ])
+    isolated_elements = set(["style", "noscript", "textarea"])
+    void_elements = set(["br", "img", "area", "hr", "param", "input", "embed", "col"])
+    block_elements = set(
+        [
+            "div",
+            "p",
+            "form",
+            "ul",
+            "ol",
+            "li",
+            "table",
+            "tr",
+            "tbody",
+            "thead",
+            "tfoot",
+            "tr",
+            "td",
+            "th",
+            "dl",
+            "dt",
+            "dd",
+            "blockquote",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "pre",
+        ]
+    )
+    breaking_rules = _make_dict_from_listing(
+        [
+            (["p"], set(["#block"])),
+            (["li"], set(["li"])),
+            (["td", "th"], set(["td", "th", "tr", "tbody", "thead", "tfoot"])),
+            (["tr"], set(["tr", "tbody", "thead", "tfoot"])),
+            (["thead", "tbody", "tfoot"], set(["thead", "tbody", "tfoot"])),
+            (["dd", "dt"], set(["dl", "dt", "dd"])),
+        ]
+    )
 
     def is_isolated(self, stack):
         for tag, value in reversed(stack):
-            if (tag in self.isolated_elements
-                    or (tag == "script" and "ng-template" not in value)):
+            if tag in self.isolated_elements or (
+                tag == "script" and "ng-template" not in value
+            ):
                 return True
         return False
 
     def is_breaking(self, tag, other_tag):
         breaking = self.breaking_rules.get(other_tag)
         return breaking and (
-            tag in breaking or (
-                '#block' in breaking and tag in self.block_elements))
+            tag in breaking or ("#block" in breaking and tag in self.block_elements)
+        )
 
     def enter_tag(self, tag, ctx):
         while ctx.stack and self.is_breaking(tag, ctx.stack[-1][0]):
@@ -85,8 +112,7 @@ class HTMLCompress(Extension):
 
     def leave_tag(self, tag, ctx):
         if not ctx.stack:
-            ctx.fail('Tried to leave "%s" but something closed '
-                     'it already' % tag)
+            ctx.fail('Tried to leave "%s" but something closed ' "it already" % tag)
         if tag == ctx.stack[-1][0]:
             ctx.stack.pop()
             return
@@ -106,7 +132,7 @@ class HTMLCompress(Extension):
                 return
 
             if normalize and not self.is_isolated(ctx.stack):
-                token_value = _ws_normalize_re.sub(' ', token_value.strip())
+                token_value = _ws_normalize_re.sub(" ", token_value.strip())
 
             token_buffer.append(token_value)
 
@@ -119,7 +145,11 @@ class HTMLCompress(Extension):
 
             # if it's the first token, check for
             # space between previous attributes
-            if not prev and value and _end_attr_re.match(getattr(ctx, 'previous_value', None) or ""):
+            if (
+                not prev
+                and value
+                and _end_attr_re.match(getattr(ctx, "previous_value", None) or "")
+            ):
                 space_before = True
 
             if not space_after and _incomplete_class_re.match(value):
@@ -128,10 +158,18 @@ class HTMLCompress(Extension):
             if not space_after and _incomplete_tag_re.match(value):
                 space_after = True
 
-            if not space_before and (_closing_tag_re.match(prev or "") or prev == ">") and value[0] != "<":
+            if (
+                not space_before
+                and (_closing_tag_re.match(prev or "") or prev == ">")
+                and value[0] != "<"
+            ):
                 space_before = True
 
-            if not space_after and (_opening_tag_re.match(next or "") or next == "<") and value[-1] != ">":
+            if (
+                not space_after
+                and (_opening_tag_re.match(next or "") or next == "<")
+                and value[-1] != ">"
+            ):
                 space_after = True
 
             if space_before:
@@ -144,7 +182,7 @@ class HTMLCompress(Extension):
 
         for match in _tag_re.finditer(ctx.token.value):
             closes, tag, sole = match.groups()
-            preamble = ctx.token.value[pos:match.start()]
+            preamble = ctx.token.value[pos : match.start()]
             write_data(preamble)
             if sole:
                 write_data(sole)
@@ -155,12 +193,16 @@ class HTMLCompress(Extension):
 
         write_data(ctx.token.value[pos:])
 
-        return u''.join([
-            validate(prev, value, next)
-            for prev, value, next in
-            zip([None, ] + token_buffer[:-1],
-                token_buffer, token_buffer[1:] + [None, ])
-        ])
+        return u"".join(
+            [
+                validate(prev, value, next)
+                for prev, value, next in zip(
+                    [None,] + token_buffer[:-1],
+                    token_buffer,
+                    token_buffer[1:] + [None,],
+                )
+            ]
+        )
 
     def filter_stream(self, stream):
         ctx = StreamProcessContext(stream)
@@ -168,47 +210,49 @@ class HTMLCompress(Extension):
         skip = False
 
         for token in stream:
-            if token.type == 'name' and token.value == u'trans':
+            if token.type == "name" and token.value == u"trans":
                 skip = True
 
-            if token.type == 'name' and token.value == u'endtrans':
+            if token.type == "name" and token.value == u"endtrans":
                 skip = False
 
-            if token.type != 'data' or skip:
+            if token.type != "data" or skip:
                 yield token
                 continue
 
             ctx.token = token
             value = self.normalize(ctx)
             ctx.previous_value = value
-            yield Token(token.lineno, 'data', value)
+            yield Token(token.lineno, "data", value)
 
 
 class SelectiveHTMLCompress(HTMLCompress):
-
     def filter_stream(self, stream):
         ctx = StreamProcessContext(stream)
         strip_depth = 0
         while True:
-            if stream.current.type == 'block_begin':
-                if stream.look().test('name:strip') or \
-                   stream.look().test('name:endstrip'):
+            if stream.current.type == "block_begin":
+                if stream.look().test("name:strip") or stream.look().test(
+                    "name:endstrip"
+                ):
                     stream.skip()
-                    if stream.current.value == 'strip':
+                    if stream.current.value == "strip":
                         strip_depth += 1
                     else:
                         strip_depth -= 1
                         if strip_depth < 0:
-                            ctx.fail('Unexpected tag endstrip')
+                            ctx.fail("Unexpected tag endstrip")
                     stream.skip()
-                    if stream.current.type != 'block_end':
-                        ctx.fail('expected end of block, got %s' %
-                                 describe_token(stream.current))
+                    if stream.current.type != "block_end":
+                        ctx.fail(
+                            "expected end of block, got %s"
+                            % describe_token(stream.current)
+                        )
                     stream.skip()
-            if strip_depth > 0 and stream.current.type == 'data':
+            if strip_depth > 0 and stream.current.type == "data":
                 ctx.token = stream.current
                 value = self.normalize(ctx)
-                yield Token(stream.current.lineno, 'data', value)
+                yield Token(stream.current.lineno, "data", value)
             else:
                 yield stream.current
             next(stream)
@@ -216,8 +260,10 @@ class SelectiveHTMLCompress(HTMLCompress):
 
 def test():
     from jinja2 import Environment
+
     env = Environment(extensions=[HTMLCompress])
-    tmpl = env.from_string('''
+    tmpl = env.from_string(
+        """
         <html>
           <head>
             <title>{{ title }}</title>
@@ -232,11 +278,13 @@ def test():
             <li><a href="{{ href }}">{{ title }}</a><img src=test.png>
           </body>
         </html>
-    ''')
-    print(tmpl.render(title=42, href='index.html'))
+    """
+    )
+    print(tmpl.render(title=42, href="index.html"))
 
     env = Environment(extensions=[SelectiveHTMLCompress])
-    tmpl = env.from_string('''
+    tmpl = env.from_string(
+        """
         Normal   <span>  unchanged </span> stuff
         {% strip %}Stripped <span class=foo  >   test   </span>
         <a href="foo">  test </a> {{ foo }}
@@ -248,9 +296,10 @@ def test():
           Moep    <span>Test</span>    Moep
         </p>
         {% endstrip %}
-    ''')
+    """
+    )
     print(tmpl.render(foo=42))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test()

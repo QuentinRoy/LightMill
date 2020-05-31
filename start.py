@@ -13,7 +13,9 @@ if __name__ == "__main__":
         "-p",
         "--port",
         type=int,
-        default=os.environ["LIGHTMILL_PORT"] or default_settings.SERVER_PORT,
+        default=os.environ["LIGHTMILL_PORT"]
+        if "LIGHTMILL_PORT" in os.environ
+        else default_settings.SERVER_PORT,
         help="Server port.",
     )
     parser.add_argument(

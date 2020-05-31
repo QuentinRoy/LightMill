@@ -75,9 +75,9 @@ docker build -t lightmill .
 ### Starting the server
 
 ```sh
-docker run -d \
+docker run \
   --mount source=lightmill,target=/data \
-  --dp 5000:80 \
+  -dp 5000:80 \
   --name lightmill_server \
   lightmill start.sh
 ```
