@@ -1,2 +1,6 @@
-__pycache__
 .git
+**/.vscode
+**/*.pyc
+**/venv
+experiments.db
+export/*

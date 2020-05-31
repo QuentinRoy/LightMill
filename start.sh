@@ -4,7 +4,7 @@
 # Argument list for the experiment server.
 serverArgList=' '
 # Argument list for python.
-pyArgList=''
+pyArgList='-u'
 # Check if debug mode, else activate python optimization.
 debug=false
 
