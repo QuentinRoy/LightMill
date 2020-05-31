@@ -83,20 +83,24 @@ def generate_trial_csv(experiment):
     def generate():
         # Create a big request that selects factors and measures and if they have id
         # conflicts. Returns the ids in alpha order, factors first.
-        factor_ids = map(
-            lambda x: x[0],
-            db.session.query(Factor.id)
-            .join(Experiment)
-            .filter(Factor.experiment == experiment)
-            .order_by(Factor.id),
+        factor_ids = list(
+            map(
+                lambda x: x[0],
+                db.session.query(Factor.id)
+                .join(Experiment)
+                .filter(Factor.experiment == experiment)
+                .order_by(Factor.id),
+            )
         )
-        measure_ids = map(
-            lambda x: x[0],
-            db.session.query(Measure.id)
-            .filter_by(trial_level=True)
-            .filter(Measure.experiment == experiment)
-            .join(Experiment)
-            .order_by(Measure.id),
+        measure_ids = list(
+            map(
+                lambda x: x[0],
+                db.session.query(Measure.id)
+                .filter_by(trial_level=True)
+                .filter(Measure.experiment == experiment)
+                .join(Experiment)
+                .order_by(Measure.id),
+            )
         )
 
         # Create the orders.
@@ -110,28 +114,18 @@ def generate_trial_csv(experiment):
             "server_completion_date",
         ]
 
-        headers = map(_toCamelCase, header_ids)
+        headers = list(map(_toCamelCase, header_ids))
 
         # Yield the header row.
         yield ",".join(
-            itertools.chain(
-                headers,
-                (
-                    _format_csv_cell(
-                        _get_free_name(
-                            f, itertools.chain(measure_ids, headers), "_factor_"
-                        )
-                    )
-                    for f in factor_ids
-                ),
-                (
-                    _format_csv_cell(
-                        _get_free_name(
-                            m, itertools.chain(factor_ids, headers), "_measure_"
-                        )
-                    )
-                    for m in measure_ids
-                ),
+            headers
+            + list(
+                _format_csv_cell(_get_free_name(f, measure_ids + headers, "_factor_"))
+                for f in factor_ids
+            )
+            + list(
+                _format_csv_cell(_get_free_name(m, factor_ids + headers, "_measure_"))
+                for m in measure_ids
             )
         ) + "\n"
 
@@ -159,16 +153,20 @@ def generate_trial_csv(experiment):
             .join(Factor, FactorValue.factor)
             .join(trial_factor_values, Trial, Block, Run)
         )
-        measure_values = db.session.query(
-            Measure.id.label("id"),
-            TrialMeasureValue.value.label("value"),
-            Trial.number,
-            Trial.completion_date,
-            Block.number,
-            Block.practice,
-            Run.id,
-            literal_column('"measures"'),
-        ).join(TrialMeasureValue, Trial, Block, Run)
+        measure_values = (
+            db.session.query(
+                Measure.id.label("id"),
+                TrialMeasureValue.value.label("value"),
+                Trial.number,
+                Trial.completion_date,
+                Block.number,
+                Block.practice,
+                Run.id,
+                literal_column('"measures"'),
+            )
+            .join(Measure, TrialMeasureValue.measure)
+            .join(Trial, Block, Run)
+        )
         block_factor_values = (
             db.session.query(
                 Factor.id.label("id"),
@@ -187,8 +185,6 @@ def generate_trial_csv(experiment):
         values = measure_values.union_all(factor_values, block_factor_values).order_by(
             Run.id, Block.number, Trial.number
         )
-
-        # values = factor_values
 
         current_record = None
         current_measured_block_num = None
@@ -319,4 +315,3 @@ def events(experiment, run, block, trial):
         run=run,
         experiment=experiment,
     )
-
