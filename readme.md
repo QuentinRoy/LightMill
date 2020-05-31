@@ -79,7 +79,7 @@ docker run \
   --mount source=lightmill,target=/data \
   -dp 5000:80 \
   --name lightmill_server \
-  lightmill start.sh
+  lightmill python -uO start.py
 ```
 
 Note: this is using the "lightmill" volume to store the data.
