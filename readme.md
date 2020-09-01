@@ -79,16 +79,16 @@ docker run \
   --mount source=lightmill,target=/data \
   -dp 5000:80 \
   --name lightmill_server \
-  lightmill python -uO start.py
+  lightmill start.py
 ```
 
 Note: this is using the "lightmill" volume to store the data.
-It is automatically managed by docker.
+It is automatically managed by docker. It needs to be defined if you want to get the data back.
 
 ### Grab the results
 
 ```sh
-docker run --mount source=lightmill,target=/data lightmill export.sh
+docker run --mount source=lightmill,target=/data lightmill export.py
 docker cp lightmill_server:/data/export ./export
 ```
 

@@ -15,6 +15,7 @@ RUN ln -s /app/start.sh /bin
 ENV LIGHTMILL_DB_URI /data/experiments.db
 ENV LIGHTMILL_EXPORT_DIR /data/export
 ENV LIGHTMILL_PORT 80
-VOLUME [ "/data" ]
+VOLUME ["/data"]
 EXPOSE 80
-CMD ["python", "-uO", "start.py"]
+ENTRYPOINT [ "python", "-uO" ]
+CMD ["start.py"]
