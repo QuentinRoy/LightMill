@@ -65,6 +65,7 @@ def experiment(experiment):
         db.session.query(
             Run, func.count(Trial.completion_date), func.count(Trial.number)
         )
+        .filter(Run.experiment == experiment)
         .outerjoin(Block, Block._run_db_id == Run._db_id)
         .outerjoin(Trial, Trial._block_db_id == Block._db_id)
         .group_by(Run.id)
@@ -150,6 +151,7 @@ def generate_trial_csv(experiment):
                 Run.id,
                 literal_column('"factors"'),
             )
+            .filter(Run.experiment == experiment)
             .join(Factor, FactorValue.factor)
             .join(trial_factor_values, Trial, Block, Run)
         )
@@ -164,6 +166,7 @@ def generate_trial_csv(experiment):
                 Run.id,
                 literal_column('"measures"'),
             )
+            .filter(Run.experiment == experiment)
             .join(Measure, TrialMeasureValue.measure)
             .join(Trial, Block, Run)
         )
@@ -178,6 +181,7 @@ def generate_trial_csv(experiment):
                 Run.id,
                 literal_column('"factors"'),
             )
+            .filter(Run.experiment == experiment)
             .join(Factor, FactorValue.factor)
             .join(block_values, Block, Run)
         )
