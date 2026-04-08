@@ -1,5 +1,7 @@
 # LightMill
 
+This package is deprecated. Find the new lightmill framework [here](https://github.com/QuentinRoy/lightmill-js).
+
 _LightMill_ is a user experiment web server used to manage and log experiments running in browsers.
 It uses [TouchStone](https://www.lri.fr/~appert/website/touchstone/touchstone.html)'s design files
 and provides a web interface to monitor an ongoing experiment. The touchstone design platform
